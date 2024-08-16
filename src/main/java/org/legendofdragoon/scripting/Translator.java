@@ -53,16 +53,8 @@ public class Translator {
           builder.append("\n; SUBROUTINE TABLE\n");
         }
 
-        if(script.reentries.contains(entry.address)) {
-          builder.append("\n; RE-ENTRY\n");
-        }
-
         if(script.forkJumps.contains(entry.address)) {
           builder.append("\n; FORK JMP\n");
-        }
-
-        if(script.forkReentries.contains(entry.address)) {
-          builder.append("\n; FORK RE-ENTRY\n");
         }
 
         if(script.warnings.containsKey(entry.address)) {

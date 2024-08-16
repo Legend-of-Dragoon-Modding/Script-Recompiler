@@ -175,9 +175,7 @@ public class Disassembler {
             final Set<Integer> tableDestinations = switch(this.meta.methods[op.headerParam].params[i].branch.toLowerCase()) {
               case "jump" -> script.jumpTableDests;
               case "subroutine" -> script.subs;
-              case "reentry" -> script.reentries;
               case "fork_jump" -> script.forkJumps;
-              case "fork_reentry" -> script.forkReentries;
               default -> {
                 LOGGER.warn("Unknown branch type %s", this.meta.methods[op.headerParam].params[i].branch);
                 yield new HashSet<>();
@@ -254,30 +252,13 @@ public class Disassembler {
 
             if(!"none".equalsIgnoreCase(param.branch)) {
               op.params[i].resolvedValue.ifPresentOrElse(offset1 -> {
-                int addr = offset1;
                 if("gosub".equalsIgnoreCase(param.branch)) {
-                  script.subs.add(addr);
-                } else if("reentry".equalsIgnoreCase(param.branch)) {
-                  if(addr >= script.allEntrypoints.size()) {
-                    script.addWarning(op.address, "Invalid entrypoint " + addr);
-                    return;
-                  }
-
-                  addr = script.allEntrypoints.get(addr);
-                  script.reentries.add(addr);
+                  script.subs.add(offset1);
                 } else if("fork_jump".equalsIgnoreCase(param.branch)) {
-                  script.forkJumps.add(addr);
-                } else if("fork_reentry".equalsIgnoreCase(param.branch)) {
-                  if(addr >= script.allEntrypoints.size()) {
-                    script.addWarning(op.address, "Invalid entrypoint " + addr);
-                    return;
-                  }
-
-                  addr = script.allEntrypoints.get(addr);
-                  script.forkReentries.add(addr);
+                  script.forkJumps.add(offset1);
                 }
 
-                this.probeBranch(script, addr);
+                this.probeBranch(script, offset1);
               }, () -> LOGGER.warn("Skipping CALL at %x due to unknowable parameter", this.state.headerOffset()));
             }
           }
@@ -346,17 +327,6 @@ public class Disassembler {
         case REWIND, RETURN, DEALLOCATE, DEALLOCATE82, CONSUME -> {
           break outer;
         }
-
-        case FORK_REENTER -> op.params[1].resolvedValue.ifPresentOrElse(entrypoint -> {
-          if(entrypoint < script.allEntrypoints.size()) {
-            final int addr = script.allEntrypoints.get(entrypoint);
-            script.forkReentries.add(addr);
-            this.probeBranch(script, addr);
-          } else {
-            script.addWarning(op.address, "Invalid entrypoint " + entrypoint);
-          }
-
-        }, () -> LOGGER.warn("Skipping FORK_REENTER at %x due to unknowable parameter", this.state.headerOffset()));
 
         case FORK -> op.params[1].resolvedValue.ifPresentOrElse(offset1 -> {
           script.forkJumps.add(offset1);
