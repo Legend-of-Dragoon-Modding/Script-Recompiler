@@ -222,9 +222,9 @@ public class Disassembler {
         case ABS -> this.modifyRegister(registers, op, 0, Math::abs);
         case MUL -> this.mergeRegister(registers, op, 1, 0, (operand, amount) -> operand * amount);
         case DIV -> this.mergeRegister(registers, op, 1, 0, (operand, amount) -> operand / amount);
-        case DIV_REV -> this.mergeRegister(registers, op, 1, 0, (operand, amount) -> amount / operand);
-        case MOD, MOD43 -> this.mergeRegister(registers, op, 1, 0, (operand, amount) -> operand % amount);
-        case MOD_REV, MOD_REV44 -> this.mergeRegister(registers, op, 1, 0, (operand, amount) -> amount % operand);
+        case DIV_REV -> this.mergeRegister(registers, op, 1, 0, (operand, amount) -> MathHelper.safeDiv(amount, operand));
+        case MOD, MOD43 -> this.mergeRegister(registers, op, 1, 0, (operand, amount) -> amount != 0 ? operand % amount : 0);
+        case MOD_REV, MOD_REV44 -> this.mergeRegister(registers, op, 1, 0, (operand, amount) -> operand != 0 ? amount % operand : 0);
         case MUL_12 -> this.mergeRegister(registers, op, 1, 0, (operand, amount) -> (operand >> 4) * (amount >> 4) >> 4);
         case DIV_12 -> this.mergeRegister(registers, op, 1, 0, (operand, amount) -> (operand << 4) / amount << 8);
         case DIV_12_REV -> this.mergeRegister(registers, op, 1, 0, (operand, amount) -> (amount << 4) / operand << 8);

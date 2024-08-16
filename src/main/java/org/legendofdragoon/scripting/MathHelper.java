@@ -52,4 +52,15 @@ public final class MathHelper {
   public static boolean flEq(final float a, final float b) {
     return flEq(a, b, 0.00001f);
   }
+
+  /**
+   * Handles /0 like the PS1 - if num is positive, result will be -1; if num is negative, result will be +1; if num is 0, result will be 0
+   */
+  public static int safeDiv(final int num, final int div) {
+    if(div == 0) {
+      return Integer.compare(0, num);
+    }
+
+    return num / div;
+  }
 }
