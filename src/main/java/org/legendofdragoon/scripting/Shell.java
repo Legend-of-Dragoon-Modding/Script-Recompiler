@@ -98,7 +98,7 @@ public final class Shell {
       cmd = parser.parse(options, args);
     } catch(final ParseException e) {
       LOGGER.error(e.getMessage());
-      helper.printHelp("", options);
+      helper.printHelp("Usage:", options);
       System.exit(1);
       return;
     }
@@ -138,7 +138,7 @@ public final class Shell {
             final String[] parts = s.split("=");
 
             if(parts.length != 2) {
-              helper.printHelp("", options);
+              helper.printHelp("Usage:", options);
               System.exit(1);
             }
 
@@ -147,11 +147,9 @@ public final class Shell {
               final int count = Integer.parseInt(parts[1]);
               disassembler.tableLengths.put(address, count);
             } catch(final NumberFormatException e) {
-              helper.printHelp("", options);
+              helper.printHelp("Usage:", options);
               System.exit(1);
             }
-
-            disassembler.extraBranches.add(Integer.parseInt(s, 16));
           }
         }
 
