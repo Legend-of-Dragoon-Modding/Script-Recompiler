@@ -162,7 +162,7 @@ public class Disassembler {
 
         // Look for inline pointers that are out of range
         if(paramType.isInline() && resolved.orElse(0) >= script.entries.length * 4) {
-          LOGGER.warn("Pointer at 0x%x destination is past the end of the script, replacing with 0", paramOffset);
+          script.addWarning(op.address, "Pointer at 0x%x destination is past the end of the script, replacing with 0".formatted(paramOffset));
           op.params[i] = new Param(paramOffset, ParameterType.IMMEDIATE, new int[] {ParameterType.IMMEDIATE.opcode << 24}, ResolvedValue.of(0), null);
           continue;
         }
@@ -254,17 +254,30 @@ public class Disassembler {
 
             if(!"none".equalsIgnoreCase(param.branch)) {
               op.params[i].resolvedValue.ifPresentOrElse(offset1 -> {
+                int addr = offset1;
                 if("gosub".equalsIgnoreCase(param.branch)) {
-                  script.subs.add(offset1);
+                  script.subs.add(addr);
                 } else if("reentry".equalsIgnoreCase(param.branch)) {
-                  script.reentries.add(offset1);
+                  if(addr >= script.allEntrypoints.size()) {
+                    script.addWarning(op.address, "Invalid entrypoint " + addr);
+                    return;
+                  }
+
+                  addr = script.allEntrypoints.get(addr);
+                  script.reentries.add(addr);
                 } else if("fork_jump".equalsIgnoreCase(param.branch)) {
-                  script.forkJumps.add(offset1);
+                  script.forkJumps.add(addr);
                 } else if("fork_reentry".equalsIgnoreCase(param.branch)) {
-                  script.forkReentries.add(offset1);
+                  if(addr >= script.allEntrypoints.size()) {
+                    script.addWarning(op.address, "Invalid entrypoint " + addr);
+                    return;
+                  }
+
+                  addr = script.allEntrypoints.get(addr);
+                  script.forkReentries.add(addr);
                 }
 
-                this.probeBranch(script, offset1);
+                this.probeBranch(script, addr);
               }, () -> LOGGER.warn("Skipping CALL at %x due to unknowable parameter", this.state.headerOffset()));
             }
           }
