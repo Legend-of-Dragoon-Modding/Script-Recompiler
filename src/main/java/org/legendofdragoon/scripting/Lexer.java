@@ -1,6 +1,7 @@
 package org.legendofdragoon.scripting;
 
 import org.legendofdragoon.scripting.meta.Meta;
+import org.legendofdragoon.scripting.resolution.ResolvedValue;
 import org.legendofdragoon.scripting.tokens.Data;
 import org.legendofdragoon.scripting.tokens.Entry;
 import org.legendofdragoon.scripting.tokens.Entrypoint;
@@ -283,9 +284,9 @@ public class Lexer {
       final int value = this.parseInt(paramString);
 
       if((value & 0xff00_0000) == 0) {
-        return new Param(address, ParameterType.IMMEDIATE, new int[] { value }, OptionalInt.of(value), null);
+        return new Param(address, ParameterType.IMMEDIATE, new int[] { value }, ResolvedValue.of(value), null);
       } else {
-        return new Param(address, ParameterType.NEXT_IMMEDIATE, new int[] { this.packParam(ParameterType.NEXT_IMMEDIATE), value }, OptionalInt.of(value), null);
+        return new Param(address, ParameterType.NEXT_IMMEDIATE, new int[] { this.packParam(ParameterType.NEXT_IMMEDIATE), value }, ResolvedValue.of(value), null);
       }
     } catch(final NumberFormatException ignored) { }
 
@@ -303,7 +304,7 @@ public class Lexer {
         default -> throw new RuntimeException("Unknown operator " + matcher.group(1));
       };
 
-      return new Param(address, ParameterType.IMMEDIATE, new int[] { operatorIndex }, OptionalInt.of(operatorIndex), null);
+      return new Param(address, ParameterType.IMMEDIATE, new int[] { operatorIndex }, ResolvedValue.of(operatorIndex), null);
     }
 
     if(paramIndex != -1 && opType == OpType.CALL) {
@@ -313,7 +314,7 @@ public class Lexer {
 
         for(int i = 0; i < enumValues.length; i++) {
           if(enumValues[i].equalsIgnoreCase(paramString)) {
-            return new Param(address, ParameterType.IMMEDIATE, new int[] { i }, OptionalInt.of(i), null);
+            return new Param(address, ParameterType.IMMEDIATE, new int[] { i }, ResolvedValue.of(i), null);
           }
         }
 
@@ -323,45 +324,45 @@ public class Lexer {
 
     if((matcher = STORAGE_PATTERN.matcher(paramString)).matches()) {
       final int p0 = this.parseInt(matcher.group(1));
-      return new Param(address, ParameterType.STORAGE, new int[] { this.packParam(ParameterType.STORAGE, p0) }, OptionalInt.empty(), null);
+      return new Param(address, ParameterType.STORAGE, new int[] { this.packParam(ParameterType.STORAGE, p0) }, ResolvedValue.unresolved(), null);
     }
 
     if((matcher = OTHER_OTHER_STORAGE_PATTERN.matcher(paramString)).matches()) {
       final int p0 = this.parseInt(matcher.group(1));
       final int p1 = this.parseInt(matcher.group(2));
       final int p2 = this.parseInt(matcher.group(3));
-      return new Param(address, ParameterType.OTHER_OTHER_STORAGE, new int[] { this.packParam(ParameterType.OTHER_OTHER_STORAGE, p0, p1, p2) }, OptionalInt.empty(), null);
+      return new Param(address, ParameterType.OTHER_OTHER_STORAGE, new int[] { this.packParam(ParameterType.OTHER_OTHER_STORAGE, p0, p1, p2) }, ResolvedValue.unresolved(), null);
     }
 
     if((matcher = OTHER_STORAGE_OFFSET_PATTERN.matcher(paramString)).matches()) {
       final int p0 = this.parseInt(matcher.group(1));
       final int p1 = this.parseInt(matcher.group(2));
       final int p2 = this.parseInt(matcher.group(3));
-      return new Param(address, ParameterType.OTHER_STORAGE_OFFSET, new int[] { this.packParam(ParameterType.OTHER_STORAGE_OFFSET, p0, p1, p2) }, OptionalInt.empty(), null);
+      return new Param(address, ParameterType.OTHER_STORAGE_OFFSET, new int[] { this.packParam(ParameterType.OTHER_STORAGE_OFFSET, p0, p1, p2) }, ResolvedValue.unresolved(), null);
     }
 
     if((matcher = GAMEVAR_1_PATTERN.matcher(paramString)).matches()) {
       final int p0 = this.parseInt(matcher.group(1));
-      return new Param(address, ParameterType.GAMEVAR_1, new int[] { this.packParam(ParameterType.GAMEVAR_1, p0) }, OptionalInt.empty(), null);
+      return new Param(address, ParameterType.GAMEVAR_1, new int[] { this.packParam(ParameterType.GAMEVAR_1, p0) }, ResolvedValue.unresolved(), null);
     }
 
     if((matcher = GAMEVAR_2_PATTERN.matcher(paramString)).matches()) {
       final int p0 = this.parseInt(matcher.group(1));
       final int p1 = this.parseInt(matcher.group(2));
-      return new Param(address, ParameterType.GAMEVAR_2, new int[] { this.packParam(ParameterType.GAMEVAR_1, p0, p1) }, OptionalInt.empty(), null);
+      return new Param(address, ParameterType.GAMEVAR_2, new int[] { this.packParam(ParameterType.GAMEVAR_1, p0, p1) }, ResolvedValue.unresolved(), null);
     }
 
     if((matcher = GAMEVAR_ARRAY_1_PATTERN.matcher(paramString)).matches()) {
       final int p0 = this.parseInt(matcher.group(1));
       final int p1 = this.parseInt(matcher.group(2));
-      return new Param(address, ParameterType.GAMEVAR_ARRAY_1, new int[] { this.packParam(ParameterType.GAMEVAR_ARRAY_1, p0, p1) }, OptionalInt.empty(), null);
+      return new Param(address, ParameterType.GAMEVAR_ARRAY_1, new int[] { this.packParam(ParameterType.GAMEVAR_ARRAY_1, p0, p1) }, ResolvedValue.unresolved(), null);
     }
 
     if((matcher = GAMEVAR_ARRAY_2_PATTERN.matcher(paramString)).matches()) {
       final int p0 = this.parseInt(matcher.group(1));
       final int p1 = this.parseInt(matcher.group(2));
       final int p2 = this.parseInt(matcher.group(3));
-      return new Param(address, ParameterType.GAMEVAR_ARRAY_2, new int[] { this.packParam(ParameterType.GAMEVAR_ARRAY_2, p0, p1, p2) }, OptionalInt.empty(), null);
+      return new Param(address, ParameterType.GAMEVAR_ARRAY_2, new int[] { this.packParam(ParameterType.GAMEVAR_ARRAY_2, p0, p1, p2) }, ResolvedValue.unresolved(), null);
     }
 
     if((matcher = INLINE_1_MATCHER.matcher(paramString)).matches()) {
@@ -379,7 +380,7 @@ public class Lexer {
         label = null;
       }
 
-      return new Param(address, ParameterType.INLINE_1, new int[] { inline }, OptionalInt.empty(), label);
+      return new Param(address, ParameterType.INLINE_1, new int[] { inline }, ResolvedValue.unresolved(), label);
     }
 
     if((matcher = INLINE_2_MATCHER.matcher(paramString)).matches()) {
@@ -399,13 +400,13 @@ public class Lexer {
         label = null;
       }
 
-      return new Param(address, ParameterType.INLINE_2, new int[] { inline }, OptionalInt.empty(), label);
+      return new Param(address, ParameterType.INLINE_2, new int[] { inline }, ResolvedValue.unresolved(), label);
     }
 
     if((matcher = GAMEVAR_3_PATTERN.matcher(paramString)).matches()) {
       final int p0 = this.parseInt(matcher.group(1));
       final int p1 = this.parseInt(matcher.group(2));
-      return new Param(address, ParameterType.GAMEVAR_3, new int[] { this.packParam(ParameterType.GAMEVAR_3, p0, p1) }, OptionalInt.empty(), null);
+      return new Param(address, ParameterType.GAMEVAR_3, new int[] { this.packParam(ParameterType.GAMEVAR_3, p0, p1) }, ResolvedValue.unresolved(), null);
     }
 
     if((matcher = INLINE_3_MATCHER.matcher(paramString)).matches()) {
@@ -429,7 +430,7 @@ public class Lexer {
         label = null;
       }
 
-      return new Param(address, ParameterType.INLINE_TABLE_1, new int[] { inline }, OptionalInt.empty(), label);
+      return new Param(address, ParameterType.INLINE_TABLE_1, new int[] { inline }, ResolvedValue.unresolved(), label);
     }
 
     // INLINE_4
@@ -438,14 +439,14 @@ public class Lexer {
     if((matcher = GAMEVAR_ARRAY_3_PATTERN.matcher(paramString)).matches()) {
       final int p0 = this.parseInt(matcher.group(1));
       final int p1 = this.parseInt(matcher.group(2));
-      return new Param(address, ParameterType.GAMEVAR_ARRAY_3, new int[] { this.packParam(ParameterType.GAMEVAR_ARRAY_3, p0, p1) }, OptionalInt.empty(), null);
+      return new Param(address, ParameterType.GAMEVAR_ARRAY_3, new int[] { this.packParam(ParameterType.GAMEVAR_ARRAY_3, p0, p1) }, ResolvedValue.unresolved(), null);
     }
 
     if((matcher = GAMEVAR_ARRAY_4_PATTERN.matcher(paramString)).matches()) {
       final int p0 = this.parseInt(matcher.group(1));
       final int p1 = this.parseInt(matcher.group(2));
       final int p2 = this.parseInt(matcher.group(3));
-      return new Param(address, ParameterType.GAMEVAR_ARRAY_4, new int[] { this.packParam(ParameterType.GAMEVAR_ARRAY_4, p0, p1, p2) }, OptionalInt.empty(), null);
+      return new Param(address, ParameterType.GAMEVAR_ARRAY_4, new int[] { this.packParam(ParameterType.GAMEVAR_ARRAY_4, p0, p1, p2) }, ResolvedValue.unresolved(), null);
     }
 
     // GAMEVAR_ARRAY_5
@@ -473,7 +474,7 @@ public class Lexer {
         label = null;
       }
 
-      return new Param(address, ParameterType.INLINE_TABLE_3, new int[] { inline }, OptionalInt.empty(), label);
+      return new Param(address, ParameterType.INLINE_TABLE_3, new int[] { inline }, ResolvedValue.unresolved(), label);
     }
 
     // _15
@@ -489,12 +490,12 @@ public class Lexer {
         packed[1 + i / 4] |= (id.charAt(i) & 0xff) << i % 4 * 8;
       }
 
-      return new Param(address, ParameterType.ID, packed, OptionalInt.empty(), null);
+      return new Param(address, ParameterType.ID, packed, ResolvedValue.unresolved(), null);
     }
 
     if((matcher = REG_PATTERN.matcher(paramString)).matches()) {
       final int p0 = this.parseInt(matcher.group(1));
-      return new Param(address, ParameterType.REG, new int[] { this.packParam(ParameterType.REG, p0) }, OptionalInt.empty(), null);
+      return new Param(address, ParameterType.REG, new int[] { this.packParam(ParameterType.REG, p0) }, ResolvedValue.unresolved(), null);
     }
 
     throw new RuntimeException("Unknown param " + paramString);

@@ -84,8 +84,10 @@ public final class Shell {
 
     if("d".equals(args[0]) || "decompile".equals(args[0])) {
       options.addOption("b", "branch", true, "Force the decompiler to decompile this branch");
-      options.addOption("C", "no-comments", false, "Make translator not add any comments");
-      options.addOption("N", "no-names", false, "Remove friendly names from engine methods");
+      options.addOption("t", "table-length", true, "Gives the table at the given address a specific length (e.g. 124c=5)");
+      options.addOption("C", "no-comments", false, "Do not add comments to decompiled scripts");
+      options.addOption("N", "no-names", false, "Do not use friendly names for engine calls");
+      options.addOption("l", "line-numbers", false, "Prepend lines of decompiler output with addresses");
     }
 
     final CommandLine cmd;
@@ -96,7 +98,7 @@ public final class Shell {
       cmd = parser.parse(options, args);
     } catch(final ParseException e) {
       LOGGER.error(e.getMessage());
-      helper.printHelp("Usage:", options);
+      helper.printHelp("", options);
       System.exit(1);
       return;
     }
@@ -117,28 +119,52 @@ public final class Shell {
 
     switch(args[0]) {
       case "d", "decompile" -> {
-        final int[] branches;
+        final Disassembler disassembler = new Disassembler(meta);
+
         final String[] branchesIn = cmd.getOptionValues("branch");
+        final String[] tableLengthsIn = cmd.getOptionValues("table-length");
         final boolean stripComments = cmd.hasOption("no-comments");
         final boolean stripNames = cmd.hasOption("no-names");
+        final boolean lineNumbers = cmd.hasOption("line-numbers");
 
-        if(branchesIn == null) {
-          branches = new int[0];
-        } else {
-          branches = new int[branchesIn.length];
-          for(int i = 0; i < branchesIn.length; i++) {
-            branches[i] = Integer.parseInt(branchesIn[i], 16);
+        if(branchesIn != null) {
+          for(final String s : branchesIn) {
+            disassembler.extraBranches.add(Integer.parseInt(s, 16));
           }
         }
 
+        if(tableLengthsIn != null) {
+          for(final String s : tableLengthsIn) {
+            final String[] parts = s.split("=");
+
+            if(parts.length != 2) {
+              helper.printHelp("", options);
+              System.exit(1);
+            }
+
+            try {
+              final int address = Integer.parseInt(parts[0], 16);
+              final int count = Integer.parseInt(parts[1]);
+              disassembler.tableLengths.put(address, count);
+            } catch(final NumberFormatException e) {
+              helper.printHelp("", options);
+              System.exit(1);
+            }
+
+            disassembler.extraBranches.add(Integer.parseInt(s, 16));
+          }
+        }
+
+        final Translator translator = new Translator();
+        translator.stripNames = stripNames;
+        translator.stripComments = stripComments;
+        translator.lineNumbers = lineNumbers;
+
         LOGGER.info("Decompiling %s...", inputFile);
 
-        final Disassembler disassembler = new Disassembler(meta);
-        final Translator translator = new Translator();
-
         final byte[] bytes = Files.readAllBytes(inputFile);
-        final Script script = disassembler.disassemble(bytes, branches);
-        final String decompiledOutput = translator.translate(script, meta, stripNames, stripComments);
+        final Script script = disassembler.disassemble(bytes);
+        final String decompiledOutput = translator.translate(script, meta);
 
         Files.createDirectories(outputFile.getParent());
         Files.writeString(outputFile, decompiledOutput, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);

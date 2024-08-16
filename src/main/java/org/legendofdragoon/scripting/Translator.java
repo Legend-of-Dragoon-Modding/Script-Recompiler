@@ -24,7 +24,11 @@ public class Translator {
 
   private final Map<String, String> reindexedLabels = new HashMap<>();
 
-  public String translate(final Script script, final Meta meta, final boolean stripNames, final boolean stripComments) {
+  public boolean stripNames;
+  public boolean stripComments;
+  public boolean lineNumbers;
+
+  public String translate(final Script script, final Meta meta) {
     final StringBuilder builder = new StringBuilder();
 
     // Sort LABEL_ labels in the order of their destinations
@@ -40,7 +44,7 @@ public class Translator {
 
     for(int entryIndex = 0; entryIndex < script.entries.length; entryIndex++) {
       final Entry entry = script.entries[entryIndex];
-      if(!stripComments) {
+      if(!this.stripComments) {
         if(script.subs.contains(entry.address)) {
           builder.append("\n; SUBROUTINE\n");
         }
@@ -50,6 +54,14 @@ public class Translator {
         }
 
         if(script.reentries.contains(entry.address)) {
+          builder.append("\n; RE-ENTRY\n");
+        }
+
+        if(script.forkJumps.contains(entry.address)) {
+          builder.append("\n; FORK JMP\n");
+        }
+
+        if(script.forkReentries.contains(entry.address)) {
           builder.append("\n; FORK RE-ENTRY\n");
         }
       }
@@ -63,7 +75,11 @@ public class Translator {
       if(entry instanceof final Entrypoint entrypoint) {
         builder.append("entrypoint :").append(entrypoint.destination).append('\n');
       } else if(entry instanceof final Data data) {
-        builder/*.append(Integer.toHexString(data.address)).append(": ")*/.append("data 0x%x".formatted(data.value)).append('\n');
+        if(this.lineNumbers) {
+          builder.append(Integer.toHexString(data.address)).append(": ");
+        }
+
+        builder.append("data 0x%x".formatted(data.value)).append('\n');
       } else if(entry instanceof final PointerTable rel) {
         if(rel.labels.length == 0) {
           throw new RuntimeException("Empty jump table %x".formatted(rel.address));
@@ -109,10 +125,14 @@ public class Translator {
         builder.append("]\n");
         entryIndex += string.chars.length / 2;
       } else if(entry instanceof final Op op) {
+        if(this.lineNumbers) {
+          builder.append(Integer.toHexString(op.address)).append(": ");
+        }
+
         builder.append(op.type.name);
 
         if(op.type == OpType.CALL) {
-          if(!stripNames) {
+          if(!this.stripNames) {
             builder.append(' ').append(meta.methods[op.headerParam].name);
           } else {
             builder.append(' ').append(op.headerParam);
@@ -137,7 +157,7 @@ public class Translator {
           builder.append(' ').append(this.buildParam(meta, op, op.params[paramIndex], paramIndex));
         }
 
-        if(!stripComments) {
+        if(!this.stripComments) {
           if(op.type == OpType.CALL && meta.methods[op.headerParam].params.length != 0) {
             builder.append(" ; ").append(Arrays.stream(meta.methods[op.headerParam].params).map(Object::toString).collect(Collectors.joining(", ")));
           } else if (op.params.length != 0 || op.type.headerParamName != null) {

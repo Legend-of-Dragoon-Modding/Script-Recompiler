@@ -11,7 +11,7 @@ public class Op extends Entry {
     super(address);
     this.type = type;
     this.headerParam = headerParam;
-    this.params = new Param[type == OpType.CALL ? paramCount : type.paramNames.length];
+    this.params = new Param[type == OpType.CALL ? paramCount : type.params.length];
   }
 
   @Override
