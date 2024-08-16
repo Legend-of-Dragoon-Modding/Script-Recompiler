@@ -221,7 +221,7 @@ public class Disassembler {
         case NEG -> this.modifyRegister(registers, op, 0, operand -> -operand);
         case ABS -> this.modifyRegister(registers, op, 0, Math::abs);
         case MUL -> this.mergeRegister(registers, op, 1, 0, (operand, amount) -> operand * amount);
-        case DIV -> this.mergeRegister(registers, op, 1, 0, (operand, amount) -> operand / amount);
+        case DIV -> this.mergeRegister(registers, op, 1, 0, (operand, amount) -> MathHelper.safeDiv(operand, amount));
         case DIV_REV -> this.mergeRegister(registers, op, 1, 0, (operand, amount) -> MathHelper.safeDiv(amount, operand));
         case MOD, MOD43 -> this.mergeRegister(registers, op, 1, 0, (operand, amount) -> amount != 0 ? operand % amount : 0);
         case MOD_REV, MOD_REV44 -> this.mergeRegister(registers, op, 1, 0, (operand, amount) -> operand != 0 ? amount % operand : 0);
