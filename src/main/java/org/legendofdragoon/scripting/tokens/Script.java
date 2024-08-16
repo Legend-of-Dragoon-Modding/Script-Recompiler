@@ -1,5 +1,7 @@
 package org.legendofdragoon.scripting.tokens;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.legendofdragoon.scripting.resolution.ScriptRegisters;
 import org.legendofdragoon.scripting.StringInfo;
 
@@ -13,6 +15,8 @@ import java.util.Map;
 import java.util.Set;
 
 public class Script {
+  private static final Logger LOGGER = LogManager.getFormatterLogger(Script.class);
+
   public final Entry[] entries;
   /** Unique entrypoints */
   public final Set<Integer> entrypoints = new HashSet<>();
@@ -25,6 +29,7 @@ public class Script {
   public final Set<Integer> forkJumps = new HashSet<>();
   public final Set<Integer> forkReentries = new HashSet<>();
   public final Set<Integer> jumpTableDests = new HashSet<>();
+  public final Map<Integer, String> warnings = new HashMap<>();
   public final Set<StringInfo> strings = new HashSet<>();
   public final Map<Integer, List<String>> labels = new HashMap<>();
   public final Map<String, Integer> labelUsageCount = new HashMap<>();
@@ -38,6 +43,11 @@ public class Script {
     this.entries = new Entry[length];
     this.registerStack.push(new ScriptRegisters());
     this.currentRegisters().allocateDecompState();
+  }
+
+  public void addWarning(final int addr, final String warning) {
+    this.warnings.put(addr, warning);
+    LOGGER.warn("WARNING @ 0x%x: %s", addr, warning);
   }
 
   /** Uses an existing label if one already points to this address */

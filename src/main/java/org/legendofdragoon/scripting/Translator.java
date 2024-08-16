@@ -64,6 +64,10 @@ public class Translator {
         if(script.forkReentries.contains(entry.address)) {
           builder.append("\n; FORK RE-ENTRY\n");
         }
+
+        if(script.warnings.containsKey(entry.address)) {
+          builder.append("\n; WARNING: ").append(script.warnings.get(entry.address)).append('\n');
+        }
       }
 
       if(script.labels.containsKey(entry.address)) {

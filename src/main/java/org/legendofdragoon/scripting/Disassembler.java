@@ -335,7 +335,15 @@ public class Disassembler {
         }
 
         case FORK_REENTER -> op.params[1].resolvedValue.ifPresentOrElse(entrypoint -> {
-          final int addr = script.allEntrypoints.get(entrypoint);
+          final int addr;
+
+          if(entrypoint < script.allEntrypoints.size()) {
+            addr = script.allEntrypoints.get(entrypoint);
+          } else {
+            addr = 0;
+            script.addWarning(op.address, "Invalid entrypoint " + entrypoint);
+          }
+
           script.forkReentries.add(addr);
           this.probeBranch(script, addr);
         }, () -> LOGGER.warn("Skipping FORK_REENTER at %x due to unknowable parameter", this.state.headerOffset()));
