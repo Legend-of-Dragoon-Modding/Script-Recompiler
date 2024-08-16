@@ -90,7 +90,7 @@ public class Translator {
         }
 
         for(int i = 0; i < rel.labels.length; i++) {
-          builder.append("rel :").append(rel.labels[i]).append('\n');
+          builder.append("rel :").append(this.getReindexedLabel(rel.labels[i])).append('\n');
           entryIndex++;
         }
 
@@ -115,7 +115,7 @@ public class Translator {
             builder.append(new LodString(0, Arrays.copyOfRange(string.chars, currentIndex, nextLabelIndex))).append("<noterm>]\n");
 
             for(final String label : overlappingLabel.getValue()) {
-              builder.append(label).append(":\n");
+              builder.append(this.getReindexedLabel(label)).append(":\n");
             }
 
             builder.append("data str[");
