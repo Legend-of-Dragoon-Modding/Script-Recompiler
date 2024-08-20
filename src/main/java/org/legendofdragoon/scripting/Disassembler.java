@@ -754,6 +754,7 @@ public class Disassembler {
     switch(op.params[destParamIndex].type) {
       case STORAGE -> setter.accept(registers.getDecompState().stor[op.params[destParamIndex].rawValues[0] & 0xff]);
 
+/*
       case OTHER_OTHER_STORAGE -> {
         final int firstRegister = op.params[destParamIndex].rawValues[0] & 0xff;
         final int secondRegister = op.params[destParamIndex].rawValues[0] >>> 8 & 0xff;
@@ -785,6 +786,7 @@ public class Disassembler {
           setter.accept(register);
         }
       }
+*/
     }
   }
 

@@ -307,7 +307,7 @@ public class Lexer {
       return new Param(address, ParameterType.IMMEDIATE, new int[] { operatorIndex }, ResolvedValue.of(operatorIndex), null);
     }
 
-    if(paramIndex != -1 && opType == OpType.CALL) {
+    if(paramIndex != -1 && paramIndex < this.meta.methods[headerParam].params.length && opType == OpType.CALL) {
       final String enumClass = this.meta.methods[headerParam].params[paramIndex].type;
       if(this.meta.enums.containsKey(enumClass)) {
         final String[] enumValues = this.meta.enums.get(enumClass);
