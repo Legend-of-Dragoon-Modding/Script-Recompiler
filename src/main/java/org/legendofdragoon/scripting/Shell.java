@@ -60,7 +60,7 @@ public final class Shell {
     }
 
     if("g".equals(args[0]) || "genpatch".equals(args[0])) {
-      generateDiff(args);
+      generateDiff(metaManager, args);
       System.exit(0);
       return;
     }
@@ -189,8 +189,9 @@ public final class Shell {
     }
   }
 
-  private static void generateDiff(final String[] args) throws IOException {
+  private static void generateDiff(final MetaManager metaManager, final String[] args) throws IOException, NoSuchVersionException, CsvException {
     final Options options = new Options();
+    options.addOption("v", "version", true, "The meta version to use");
     options.addRequiredOption("a", "original", true, "The original file");
     options.addRequiredOption("b", "modified", true, "The modified file");
     options.addRequiredOption("o", "out", true, "The output file");
@@ -208,6 +209,11 @@ public final class Shell {
       return;
     }
 
+    final String version = cmd.getOptionValue("version", "snapshot");
+
+    LOGGER.info("Loading meta %s...", version);
+    final Meta meta = metaManager.loadMeta(version);
+
     final Path originalFile = Paths.get(cmd.getOptionValue("original")).toAbsolutePath();
     final Path modifiedFile = Paths.get(cmd.getOptionValue("modified")).toAbsolutePath();
     final Path outputFile = Paths.get(cmd.getOptionValue("out")).toAbsolutePath();
@@ -223,7 +229,7 @@ public final class Shell {
     LOGGER.info("Modified: %s", modifiedFile);
     LOGGER.info("Output: %s", outputFile);
 
-    final String output = Patcher.generatePatch(originalFile, modifiedFile);
+    final String output = Patcher.generatePatch(meta, originalFile, modifiedFile);
     Files.createDirectories(outputFile.getParent());
     Files.writeString(outputFile, output, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
   }
