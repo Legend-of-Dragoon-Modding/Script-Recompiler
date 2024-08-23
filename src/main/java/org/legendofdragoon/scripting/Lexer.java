@@ -75,7 +75,13 @@ public class Lexer {
 
       final Matcher labelMatcher = LABEL_PATTERN.matcher(line);
       if(labelMatcher.matches()) {
-        labels.put(labelMatcher.group(1), address);
+        final String label = labelMatcher.group(1);
+
+        if(labels.containsKey(label)) {
+          throw new DuplicateLabelException("Label %s already defined at address 0x%x".formatted(label, labels.get(label)));
+        }
+
+        labels.put(label, address);
         continue;
       }
 
