@@ -404,7 +404,7 @@ public class Disassembler {
       throw new RuntimeException("Empty table at 0x%x".formatted(tableAddress));
     }
 
-    script.entries[tableAddress / 0x4] = new PointerTable(tableAddress, labels.toArray(String[]::new));
+    script.entries[tableAddress / 0x4] = new PointerTable(tableAddress, this.state.wordAt(tableAddress), labels.toArray(String[]::new));
 
     // Visit tables in reverse order so that it's easier to determine where tables end
     destinations.stream().distinct().sorted(Comparator.reverseOrder()).forEach(visitor);
@@ -487,7 +487,7 @@ public class Disassembler {
       labels[entryIndex] = script.addLabel(destinations.get(entryIndex), "PTR_%x_%d".formatted(tableAddress, entryIndex));
     }
 
-    final PointerTable table = new PointerTable(tableAddress, labels);
+    final PointerTable table = new PointerTable(tableAddress, this.state.wordAt(tableAddress), labels);
     script.entries[tableAddress / 0x4] = table;
 
     // Add string entries if appropriate

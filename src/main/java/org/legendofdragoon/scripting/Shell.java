@@ -175,7 +175,7 @@ public final class Shell {
         final Lexer lexer = new Lexer(meta);
 
         final String input = Files.readString(inputFile);
-        final Script lexedDecompiledSource = lexer.lex(input);
+        final Script lexedDecompiledSource = lexer.lex(inputFile, input);
         final int[] recompiledSource = compiler.compile(lexedDecompiledSource);
 
         Files.createDirectories(outputFile.getParent());

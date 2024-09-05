@@ -11,6 +11,9 @@ import org.legendofdragoon.scripting.tokens.Param;
 import org.legendofdragoon.scripting.tokens.PointerTable;
 import org.legendofdragoon.scripting.tokens.Script;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -25,6 +28,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class Lexer {
+  public static final Pattern INCLUDE_PATTERN = Pattern.compile("^#include\\s+([^;]+)\\s*;?.*$", Pattern.CASE_INSENSITIVE);
+
   public static final String NUMBER_SUBPATTERN = "0x[a-f\\d]{1,8}|\\d{1,10}";
   public static final Pattern LINE_PATTERN = Pattern.compile("^\\s*?(?:[a-f0-9]+\\s+)?([a-z]\\w*?)(?:\\s+(.+))?$", Pattern.CASE_INSENSITIVE);
   public static final Pattern NUMBER_PATTERN = Pattern.compile("^-?(?:" + NUMBER_SUBPATTERN + ")$", Pattern.CASE_INSENSITIVE);
@@ -63,15 +68,36 @@ public class Lexer {
     this.meta = meta;
   }
 
-  public Script lex(final String source) {
-    final List<String> lines = source.lines().map(this::removeComment).map(String::strip).filter(Predicate.not(String::isBlank)).toList();
+  public Script lex(final Path path, final String source) {
+    List<String> lines = this.splitSource(source);
 
     final List<Entry> entries = new ArrayList<>();
     final Map<String, Integer> labels = new HashMap<>();
     final Set<String> tables = new HashSet<>();
 
-    for(final String line : lines) {
+    for(int lineIndex = 0; lineIndex < lines.size(); lineIndex++) {
+      String line = lines.get(lineIndex);
       final int address = entries.size() * 0x4;
+
+      final Matcher includeMatcher = INCLUDE_PATTERN.matcher(line);
+      if(includeMatcher.matches()) {
+        Path includePath = Path.of(includeMatcher.group(1));
+
+        if(!includePath.isAbsolute()) {
+          includePath = path.getParent().resolve(includePath);
+        }
+
+        final List<String> newLines = new ArrayList<>(lines.subList(0, lineIndex));
+        try {
+          newLines.addAll(this.splitSource(Files.readString(includePath)));
+        } catch(final IOException e) {
+          throw new IncludeFailedException("Include for " + includePath + " failed", e);
+        }
+
+        newLines.addAll(lines.subList(lineIndex + 1, lines.size()));
+        lines = newLines;
+        line = lines.get(lineIndex);
+      }
 
       final Matcher labelMatcher = LABEL_PATTERN.matcher(line);
       if(labelMatcher.matches()) {
@@ -159,7 +185,7 @@ public class Lexer {
         offset++;
       }
 
-      entries.set(tableOffset, new PointerTable(tableOffset * 0x4, newLabels.toArray(String[]::new)));
+      entries.set(tableOffset, new PointerTable(tableOffset * 0x4, 0, newLabels.toArray(String[]::new)));
 
       for(int i = 1; i < newLabels.size(); i++) {
         entries.set(tableOffset + i, new Data((tableOffset + i) * 0x4, 0));
@@ -176,6 +202,10 @@ public class Lexer {
     }
 
     return script;
+  }
+
+  private List<String> splitSource(final String source) {
+    return source.lines().map(this::removeComment).map(String::strip).filter(Predicate.not(String::isBlank)).toList();
   }
 
   private String removeComment(final String line) {
@@ -201,44 +231,45 @@ public class Lexer {
           }
 
           return new Entrypoint(address, paramsStr.substring(1));
-        } else if("data".equalsIgnoreCase(command)) {
+        }
+        if("data".equalsIgnoreCase(command)) {
           final Matcher stringMatcher = STRING_PATTERN.matcher(paramsStr);
           if(stringMatcher.matches()) {
             return LodString.fromString(address, stringMatcher.group(1));
           }
 
           return new Data(address, this.parseInt(paramsStr));
-        } else if("rel".equalsIgnoreCase(command)) {
+        }
+        if("rel".equalsIgnoreCase(command)) {
           if(!LABEL_PARAM_PATTERN.matcher(paramsStr).matches()) {
             throw new RuntimeException("Invalid relative pointer label " + paramsStr);
           }
 
-          return new PointerTable(address, new String[] { paramsStr.substring(1) });
-        } else {
-          final OpType opType = OpType.byName(command);
+          return new PointerTable(address, 0, new String[] { paramsStr.substring(1) });
+        }
+        final OpType opType = OpType.byName(command);
 
-          if(opType != null) {
-            final int headerParam;
-            Param[] params;
+        if(opType != null) {
+          final int headerParam;
+          Param[] params;
 
-            if(paramsStr != null) {
-              params = this.parseParams(address, address + 0x4, opType, paramsStr);
+          if(paramsStr != null) {
+            params = this.parseParams(address, address + 0x4, opType, paramsStr);
 
-              if(opType.headerParamName == null) {
-                headerParam = 0;
-              } else {
-                headerParam = params[0].rawValues[0];
-                params = Arrays.copyOfRange(params, 1, params.length);
-              }
-            } else {
+            if(opType.headerParamName == null) {
               headerParam = 0;
-              params = new Param[0];
+            } else {
+              headerParam = params[0].rawValues[0];
+              params = Arrays.copyOfRange(params, 1, params.length);
             }
-
-            final Op op = new Op(address, opType, headerParam, params.length);
-            System.arraycopy(params, 0, op.params, 0, params.length);
-            return op;
+          } else {
+            headerParam = 0;
+            params = new Param[0];
           }
+
+          final Op op = new Op(address, opType, headerParam, params.length);
+          System.arraycopy(params, 0, op.params, 0, params.length);
+          return op;
         }
       } catch(final NumberFormatException e) {
         System.err.println(e.getMessage());
@@ -291,9 +322,8 @@ public class Lexer {
 
       if((value & 0xff00_0000) == 0) {
         return new Param(address, ParameterType.IMMEDIATE, new int[] { value }, ResolvedValue.of(value), null);
-      } else {
-        return new Param(address, ParameterType.NEXT_IMMEDIATE, new int[] { this.packParam(ParameterType.NEXT_IMMEDIATE), value }, ResolvedValue.of(value), null);
       }
+      return new Param(address, ParameterType.NEXT_IMMEDIATE, new int[] { this.packParam(ParameterType.NEXT_IMMEDIATE), value }, ResolvedValue.of(value), null);
     } catch(final NumberFormatException ignored) { }
 
     Matcher matcher;

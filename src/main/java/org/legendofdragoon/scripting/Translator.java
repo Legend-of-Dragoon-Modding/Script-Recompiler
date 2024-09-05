@@ -78,7 +78,16 @@ public class Translator {
         builder.append("data 0x%x".formatted(data.value)).append('\n');
       } else if(entry instanceof final PointerTable rel) {
         if(rel.labels.length == 0) {
-          throw new RuntimeException("Empty jump table %x".formatted(rel.address));
+          LOGGER.warn("Empty jump table @ 0x%x", rel.address);
+
+          builder.append("\n; WARNING: empty table\n");
+
+          if(this.lineNumbers) {
+            builder.append(Integer.toHexString(rel.address)).append(": ");
+          }
+
+          builder.append("data 0x%x".formatted(rel.originalValue)).append('\n');
+          continue;
         }
 
         for(int i = 0; i < rel.labels.length; i++) {
