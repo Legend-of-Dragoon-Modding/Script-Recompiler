@@ -265,6 +265,8 @@ public class Translator {
 
         yield "id[" + id + ']';
       }
+      case REG_NULL -> "null";
+      case REG_VAR -> "reg[stor[%d]]".formatted(param.rawValues[0] & 0xff);
     };
   }
 

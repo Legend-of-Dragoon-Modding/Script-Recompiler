@@ -60,6 +60,7 @@ public class Lexer {
   public static final Pattern INLINE_6_PATTERN = Pattern.compile("^inl\\s*?\\[\\s*?(" + NUMBER_SUBPATTERN + "|:\\w+)\\s*?\\+\\s*?inl\\s*?\\[(" + NUMBER_SUBPATTERN + "|:\\w+)\\s*?\\+\\s*?(" + NUMBER_SUBPATTERN + ")\\s*?]\\s*?]$", Pattern.CASE_INSENSITIVE);
 
   public static final Pattern REG_PATTERN = Pattern.compile("^reg\\s*?\\[\\s*?(" + NUMBER_SUBPATTERN + ")\\s*?]$", Pattern.CASE_INSENSITIVE);
+  public static final Pattern REG_VAR_PATTERN = Pattern.compile("^reg\\s*?\\[\\s*?stor\\[\\s*?(" + NUMBER_SUBPATTERN + ")\\s*?]\\s*?]$", Pattern.CASE_INSENSITIVE);
   public static final Pattern ID_PATTERN = Pattern.compile("^id\\s*?\\[\\s*?(.*?:.*?)\\s*?]$", Pattern.CASE_INSENSITIVE);
 
   private final Meta meta;
@@ -532,6 +533,15 @@ public class Lexer {
     if((matcher = REG_PATTERN.matcher(paramString)).matches()) {
       final int p0 = this.parseInt(matcher.group(1));
       return new Param(address, ParameterType.REG, new int[] { this.packParam(ParameterType.REG, p0) }, ResolvedValue.unresolved(), null);
+    }
+
+    if((matcher = REG_VAR_PATTERN.matcher(paramString)).matches()) {
+      final int p0 = this.parseInt(matcher.group(1));
+      return new Param(address, ParameterType.REG_VAR, new int[] { this.packParam(ParameterType.REG_VAR, p0) }, ResolvedValue.unresolved(), null);
+    }
+
+    if("null".equalsIgnoreCase(paramString)) {
+      return new Param(address, ParameterType.REG_NULL, new int[] { this.packParam(ParameterType.REG_NULL) }, ResolvedValue.of(0), null);
     }
 
     throw new RuntimeException("Unknown param " + paramString);
