@@ -360,16 +360,20 @@ public class Disassembler {
 
     tables.add(tableAddress);
 
+    final boolean forcedLength;
     final LengthPredicate lengthPredicate;
     if(this.tableLengths.containsKey(tableAddress)) { // Explicit table length
       lengthPredicate = (entryIndex, entryAddress, earliestDestination, latestDestination) ->
         entryIndex < this.tableLengths.get(tableAddress);
+      forcedLength = true;
     } else if(length.isRange()) { // Table length determined by possible range of register
       lengthPredicate = (entryIndex, entryAddress, earliestDestination, latestDestination) ->
         entryIndex < length.max();
+      forcedLength = true;
     } else { // Heuristic that only allows all positive or all negative pointers (breaks a few tables like in Kazas garbage room) but yields much better results overall)
       lengthPredicate = (entryIndex, entryAddress, earliestDestination, latestDestination) ->
         this.state.wordAt(entryAddress) > 0 ? entryAddress < earliestDestination : entryAddress > latestDestination;
+      forcedLength = false;
     }
 
     int earliestDestination = this.state.length();
@@ -387,7 +391,7 @@ public class Disassembler {
         break;
       }
 
-      if(!destinationAddressHeuristic.test(destAddress)) {
+      if(!forcedLength && !destinationAddressHeuristic.test(destAddress)) {
         break;
       }
 
