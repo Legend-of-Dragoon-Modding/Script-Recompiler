@@ -5,7 +5,7 @@ plugins {
 }
 
 group 'org.legendofdragoon'
-version '0.5.4'
+version '0.5.5'
 
 ext.isReleaseVersion = !version.endsWith("SNAPSHOT")
 
