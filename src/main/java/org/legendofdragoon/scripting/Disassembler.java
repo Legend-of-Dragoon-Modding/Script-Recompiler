@@ -187,13 +187,17 @@ public class Disassembler {
             final int finalI = i;
             param.resolvedValue.ifPresent(tableAddress -> this.handlePointerTable(script, op, finalI, tableAddress, script.buildStrings, op.params[0].resolvedValue));
           }
-        } else if(op.type == OpType.CALL && "string".equalsIgnoreCase(this.meta.methods[op.headerParam].params[i].type)) {
-          // Resolve strings that are pointed to by a non-table inline
-          param.resolvedValue.ifPresent(stringAddress ->
-            script.buildStrings.add(() ->
-              script.strings.add(new StringInfo(stringAddress, -1)) // We don't know the length
-            )
-          );
+        } else if(op.type == OpType.CALL) {
+          if(i >= this.meta.methods[op.headerParam].params.length) {
+            script.addWarning(op.address, "Call passed more params than expected");
+          } else if("string".equalsIgnoreCase(this.meta.methods[op.headerParam].params[i].type)) {
+            // Resolve strings that are pointed to by a non-table inline
+            param.resolvedValue.ifPresent(stringAddress ->
+              script.buildStrings.add(() ->
+                script.strings.add(new StringInfo(stringAddress, -1)) // We don't know the length
+              )
+            );
+          }
         }
       }
 
