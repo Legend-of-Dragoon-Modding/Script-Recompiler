@@ -386,7 +386,7 @@ public class Lexer {
     if((matcher = GAMEVAR_2_PATTERN.matcher(paramString)).matches()) {
       final int p0 = this.parseInt(matcher.group(1));
       final int p1 = this.parseInt(matcher.group(2));
-      return new Param(address, ParameterType.GAMEVAR_2, new int[] { this.packParam(ParameterType.GAMEVAR_1, p0, p1) }, ResolvedValue.unresolved(), null);
+      return new Param(address, ParameterType.GAMEVAR_2, new int[] { this.packParam(ParameterType.GAMEVAR_2, p0, p1) }, ResolvedValue.unresolved(), null);
     }
 
     if((matcher = GAMEVAR_ARRAY_1_PATTERN.matcher(paramString)).matches()) {
