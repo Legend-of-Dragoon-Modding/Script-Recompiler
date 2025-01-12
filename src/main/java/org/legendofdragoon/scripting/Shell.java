@@ -38,7 +38,7 @@ public final class Shell {
 
   public static void main(final String[] args) throws IOException, URISyntaxException, CsvException, NoSuchVersionException, PatchFailedException {
     if(args.length == 0) {
-      LOGGER.info("Commands: [v]ersions, [d]ecompile, [c]ompile, [g]enpatch, [a]pplypatch, [u]ndopatch");
+      LOGGER.info("Commands: [v]ersions, [d]ecompile, [c]ompile, [g]enpatch, [a]pplypatch, [u]ndopatch, [s]trip");
       System.exit(1);
       return;
     }
@@ -73,6 +73,12 @@ public final class Shell {
 
     if("u".equals(args[0]) || "undopatch".equals(args[0])) {
       undoDiff(args);
+      System.exit(0);
+      return;
+    }
+
+    if("s".equals(args[0]) || "strip".equals(args[0])) {
+      strip(metaManager, args);
       System.exit(0);
       return;
     }
@@ -273,7 +279,7 @@ public final class Shell {
     Files.writeString(outputFile, output, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
   }
 
-  private static void undoDiff(final String[] args) throws IOException, PatchFailedException {
+  private static void undoDiff(final String[] args) throws IOException {
     final Options options = new Options();
     options.addRequiredOption("a", "patched", true, "The patched file");
     options.addRequiredOption("b", "patch", true, "The patch file");
@@ -308,6 +314,57 @@ public final class Shell {
     LOGGER.info("Output: %s", outputFile);
 
     final String output = Patcher.undoPatch(patchedFile, patchFile);
+    Files.createDirectories(outputFile.getParent());
+    Files.writeString(outputFile, output, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+  }
+
+  private static void strip(final MetaManager metaManager, final String[] args) throws IOException, NoSuchVersionException, CsvException {
+    final Options options = new Options();
+    options.addOption("v", "version", true, "The meta version to use");
+    options.addRequiredOption("i", "in", true, "The original file");
+    options.addRequiredOption("o", "out", true, "The output file");
+    options.addOption("C", "ignore-calls", false, "Do not strip calls");
+    options.addOption("E", "ignore-end-of-line-comments", false, "Do not strip end-of-line comments");
+    options.addOption("F", "ignore-full-line-comments", false, "Do not strip full-line comments");
+    options.addOption("B", "ignore-blank-lines", false, "Do not strip blank lines");
+
+    final CommandLine cmd;
+    final CommandLineParser parser = new DefaultParser();
+    final HelpFormatter helper = new HelpFormatter();
+
+    try {
+      cmd = parser.parse(options, args);
+    } catch(final ParseException e) {
+      LOGGER.error(e.getMessage());
+      helper.printHelp("Usage:", options);
+      System.exit(1);
+      return;
+    }
+
+    final String version = cmd.getOptionValue("version", "snapshot");
+
+    LOGGER.info("Loading meta %s...", version);
+    final Meta meta = metaManager.loadMeta(version);
+
+    final Path inputFile = Paths.get(cmd.getOptionValue("in")).toAbsolutePath();
+    final Path outputFile = Paths.get(cmd.getOptionValue("out")).toAbsolutePath();
+
+    if(!Files.exists(inputFile)) {
+      LOGGER.error("Error: input file does not exist");
+      System.exit(1);
+      return;
+    }
+
+    final boolean stripCalls = !cmd.hasOption("ignore-calls");
+    final boolean stripEndOfLineComments = !cmd.hasOption("ignore-end-of-line-comments");
+    final boolean stripFullLineComments = !cmd.hasOption("ignore-full-line-comments");
+    final boolean stripBlankLines = !cmd.hasOption("ignore-blank-lines");
+
+    LOGGER.info("Stripping script...");
+    LOGGER.info("Input: %s", inputFile);
+    LOGGER.info("Output: %s", outputFile);
+
+    final String output = Patcher.strip(meta, inputFile, stripCalls, stripEndOfLineComments, stripFullLineComments, stripBlankLines);
     Files.createDirectories(outputFile.getParent());
     Files.writeString(outputFile, output, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
   }

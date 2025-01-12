@@ -14,6 +14,8 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public final class Patcher {
   private Patcher() { }
@@ -74,13 +76,36 @@ public final class Patcher {
     return output.toString();
   }
 
+  public static String strip(final Meta meta, final Path file, final boolean stripCalls, final boolean stripEndOfLineComments, final boolean stripFullLineComments, final boolean stripBlankLines) throws IOException {
+    return String.join("\n", strip(meta, Files.readAllLines(file), stripCalls, stripEndOfLineComments, stripFullLineComments, stripBlankLines));
+  }
+
   private static List<String> strip(final Meta meta, final List<String> input) {
-    return input.stream()
-      .map(line -> line.indexOf(';') != -1 ? line.substring(0, line.indexOf(';')) : line)
-      .map(Patcher.replaceCalls(meta))
-      .map(String::strip)
-      .filter(Predicate.not(String::isBlank))
-      .toList();
+    return strip(meta, input, true, true, true, true);
+  }
+
+  private static List<String> strip(final Meta meta, final List<String> input, final boolean stripCalls, final boolean stripEndOfLineComments, final boolean stripFullLineComments, final boolean stripBlankLines) {
+    Stream<String> stream = input.stream();
+
+    if(stripEndOfLineComments) {
+      stream = stream.map(line -> line.indexOf(';') > 0 ? line.substring(0, line.indexOf(';')) : line);
+    }
+
+    if(stripFullLineComments) {
+      stream = stream.map(line -> line.indexOf(';') == 0 ? "" : line);
+    }
+
+    if(stripCalls) {
+      stream = stream.map(Patcher.replaceCalls(meta));
+    }
+
+    stream = stream.map(String::strip);
+
+    if(stripBlankLines) {
+      stream = stream.filter(Predicate.not(String::isBlank));
+    }
+
+    return stream.toList();
   }
 
   private static Function<String, String> replaceCalls(final Meta meta) {
