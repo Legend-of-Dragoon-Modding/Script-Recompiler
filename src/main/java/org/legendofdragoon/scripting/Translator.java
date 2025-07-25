@@ -271,7 +271,7 @@ public class Translator {
   }
 
   private String getImmediateParam(final Meta meta, final Op op, final int paramIndex, final int value) {
-    if(op.type == OpType.CALL && meta.enums.containsKey(meta.methods[op.headerParam].params[paramIndex].type)) {
+    if(op.type == OpType.CALL && op.headerParam < meta.methods.length && paramIndex < meta.methods[op.headerParam].params.length && meta.enums.containsKey(meta.methods[op.headerParam].params[paramIndex].type)) {
       return meta.enums.get(meta.methods[op.headerParam].params[paramIndex].type)[value];
     }
 

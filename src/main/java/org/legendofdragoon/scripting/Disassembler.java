@@ -382,7 +382,7 @@ public class Disassembler {
     final List<String> labels = new ArrayList<>();
     for(
       int entryAddress = tableAddress, entryIndex = 0;
-      entryAddress <= this.state.length() - 4 && script.entries[entryAddress / 4] == null && lengthPredicate.get(entryIndex, entryAddress, earliestDestination, latestDestination) && (!this.isProbablyOp(script, entryAddress) || this.isValidOp(tableAddress + this.state.wordAt(entryAddress) * 0x4));
+      entryAddress <= this.state.length() - 4 && script.entries[entryAddress / 4] == null && lengthPredicate.get(entryIndex, entryAddress, earliestDestination, latestDestination) && (forcedLength || !this.isProbablyOp(script, entryAddress) || this.isValidOp(tableAddress + this.state.wordAt(entryAddress) * 0x4));
       entryAddress += 0x4, entryIndex++
     ) {
       final int destAddress = tableAddress + this.state.wordAt(entryAddress) * 0x4;
@@ -409,7 +409,7 @@ public class Disassembler {
     }
 
     if(labels.isEmpty()) {
-      throw new RuntimeException("Empty table at 0x%x".formatted(tableAddress));
+      LOGGER.warn("Empty table at 0x%x", tableAddress);
     }
 
     script.entries[tableAddress / 0x4] = new PointerTable(tableAddress, this.state.wordAt(tableAddress), labels.toArray(String[]::new));
