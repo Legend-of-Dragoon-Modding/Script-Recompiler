@@ -1,13 +1,15 @@
 package org.legendofdragoon.scripting;
 
+import org.legendofdragoon.scripting.tokens.Op;
+
 import java.util.Arrays;
 
 public enum OpType {
   YIELD(0, "yield"),
   REWIND(1, "rewind"),
   WAIT(2, "wait", OpParam.in("frames")),
-  WAIT_CMP(3, "wait_cmp", "operator", OpParam.in("left"), OpParam.in("right")),
-  WAIT_CMP_0(4, "wait_cmp", "operator", OpParam.in("right")),
+  WAIT_CMP(3, "wait_cmp", "operand", OpParam.in("left"), OpParam.in("right")),
+  WAIT_CMP_0(4, "wait_cmp", "operand", OpParam.in("right")),
   REWIND5(5, "rewind"),
   REWIND6(6, "rewind"),
   REWIND7(7, "rewind"),
@@ -50,8 +52,8 @@ public enum OpType {
   ATAN2_12(52, "atan2_12", OpParam.in("y"), OpParam.in("x"), OpParam.out("dest")),
   CALL(56, "call", "index"),
   JMP(64, "jmp", OpParam.in("addr")),
-  JMP_CMP(65, "jmp_cmp", "operand", OpParam.in("left"), OpParam.in("right"), OpParam.in("addr")),
-  JMP_CMP_0(66, "jmp_cmp", "operand", OpParam.in("right"), OpParam.in("addr")),
+  JMP_CMP(65, "jmp_cmp", "operator", OpParam.in("left"), OpParam.in("right"), OpParam.in("addr")),
+  JMP_CMP_0(66, "jmp_cmp", "operator", OpParam.in("right"), OpParam.in("addr")),
   WHILE(67, "while", OpParam.both("counter"), OpParam.in("addr")),
   JMP_TABLE(68, "jmp_table", OpParam.in("index"), OpParam.in("table")),
   GOSUB(72, "gosub", OpParam.in("addr")),
@@ -127,5 +129,27 @@ public enum OpType {
 
   public String[] getCommentParamNames() {
     return this.commentParamNames;
+  }
+
+  public Op modifyOp(final Op op) {
+    if(op.type == WAIT_CMP && op.params[0].resolvedValue.isPresent() && op.params[0].resolvedValue.get() == 0) {
+      final Op newOp = new Op(op.address, WAIT_CMP_0, op.headerParam, op.params.length - 1);
+      System.arraycopy(op.params, 1, newOp.params, 0, newOp.params.length);
+      return newOp;
+    }
+
+    if(op.type == JMP_CMP && op.params[0].resolvedValue.isPresent() && op.params[0].resolvedValue.get() == 0) {
+      final Op newOp = new Op(op.address, JMP_CMP_0, op.headerParam, op.params.length - 1);
+      System.arraycopy(op.params, 1, newOp.params, 0, newOp.params.length);
+      return newOp;
+    }
+
+    if(op.type == MOV && op.params[0].resolvedValue.isPresent() && op.params[0].resolvedValue.get() == 0) {
+      final Op newOp = new Op(op.address, MOV_0, op.headerParam, op.params.length - 1);
+      System.arraycopy(op.params, 1, newOp.params, 0, newOp.params.length);
+      return newOp;
+    }
+
+    return op;
   }
 }

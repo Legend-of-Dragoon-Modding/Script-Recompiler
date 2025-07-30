@@ -270,10 +270,10 @@ public class Lexer {
 
           final Op op = new Op(address, opType, headerParam, params.length);
           System.arraycopy(params, 0, op.params, 0, params.length);
-          return op;
+          return opType.modifyOp(op);
         }
-      } catch(final NumberFormatException e) {
-        System.err.println(e.getMessage());
+      } catch(final Exception e) {
+        throw new RuntimeException("Invalid line \"" + line + '"', e);
       }
     }
 
@@ -289,11 +289,11 @@ public class Lexer {
       final Param param = this.parseParam(opAddress, address, opType, headerParam, i - (opType.headerParamName != null ? 1 : 0), paramStrings[i]);
       params[i] = param;
 
-      // If we have a header param, the first param returns will be a pseudo-param that doesn't advance the address since it's part of the header
+      // If we have a header param, the first param returned will be a pseudo-param that doesn't advance the address since it's part of the header
       if(i != 0 || opType.headerParamName == null) {
         address += param.type.getWidth(paramStrings[i]) * 0x4;
       } else {
-        headerParam = param.rawValues[0];
+        headerParam = param.resolvedValue.get();
       }
     }
 
