@@ -24,15 +24,29 @@ public class LodString extends Entry {
   public String toString() {
     final StringBuilder out = new StringBuilder();
 
-    for(final int chr : this.chars) {
+    for(int i = 0; i < this.chars.length; i++) {
+      final int chr = this.chars[i];
+
       if((chr & 0xff00) != 0) {
         final CONTROLS control = CONTROLS.fromControl(chr);
 
         if(control != null) {
           out.append('<').append(control.name);
 
-          if(control.hasParam) {
-            out.append('=').append(chr & 0xff);
+          if(control.paramType != ControlType.NONE) {
+            out.append('=');
+          }
+
+          if(control.paramType == ControlType.NUMERIC) {
+            out.append(chr & 0xff);
+          } else if(control.paramType == ControlType.STRING) {
+            final int length = chr & 0xff;
+
+            for(int n = 0; n < length; n++) {
+              out.append((char)(this.chars[i + 1 + n / 2] >>> (n & 0x1) * 8 & 0xff));
+            }
+
+            i += (length + 1) / 2;
           }
 
           out.append('>');
@@ -44,7 +58,7 @@ public class LodString extends Entry {
         case 0x00 -> ' ';
         case 0x01 -> ',';
         case 0x02 -> '.';
-        case 0x03 -> '\u00b7';
+        case 0x03 -> '·';
         case 0x04 -> ':';
         case 0x05 -> '?';
         case 0x06 -> '!';
@@ -127,6 +141,7 @@ public class LodString extends Entry {
         case 0x53 -> '[';
         case 0x54 -> ']';
         case 0x55 -> ';';
+        case 0x56 -> '□';
         default -> {
           LOGGER.warn("Found invalid character %x", chr);
           yield "<chr=0x%x>".formatted(chr);
@@ -163,13 +178,24 @@ public class LodString extends Entry {
           final String paramString = controlMatcher.group(2);
 
           final CONTROLS control = CONTROLS.fromName(controlName);
-          int converted = control.control;
 
-          if((control.hasParam)) {
-            converted |= parseInt(paramString);
+          if(control.paramType == ControlType.NUMERIC) {
+            out.add(control.control | parseInt(paramString));
+          } else if(control.paramType == ControlType.STRING) {
+            out.add(control.control | paramString.length());
+
+            for(int n = 0; n < (paramString.length() + 1) / 2; n++) {
+              int c = paramString.charAt(n * 2);
+
+              if(n * 2 + 1 < paramString.length()) {
+                c |= paramString.charAt(n * 2 + 1) << 8;
+              }
+
+              out.add(c);
+            }
+          } else {
+            out.add(control.control);
           }
-
-          out.add(converted);
         }
 
         i = end;
@@ -180,7 +206,7 @@ public class LodString extends Entry {
         case ' ' -> 0x00;
         case ',' -> 0x01;
         case '.' -> 0x02;
-        case '\u00b7' -> 0x03;
+        case '·' -> 0x03;
         case ':' -> 0x04;
         case '?' -> 0x05;
         case '!' -> 0x06;
@@ -263,6 +289,7 @@ public class LodString extends Entry {
         case '[' -> 0x53;
         case ']' -> 0x54;
         case ';' -> 0x55;
+        case '□' -> 0x56;
         default -> throw new RuntimeException("Illegal char %c".formatted(chr));
       });
     }
@@ -287,25 +314,26 @@ public class LodString extends Entry {
   }
 
   private enum CONTROLS {
-    LINE("line", 0xa1ff, false),
-    BUTTON("button", 0xa200, false),
-    MULTIBOX("multibox", 0xa3ff, false),
-    SPEED("speed", 0xa500, true),
-    PAUSE("pause", 0xa600, true),
-    COLOUR("colour", 0xa700, true),
-    VAR("var", 0xa800, true),
-    XOFFSET("xoffset", 0xad00, true),
-    YOFFSET("yoffset", 0xae00, true),
-    SAUTO("sauto", 0xb000, true),
-    ELEMENT("element", 0xb100, true),
-    ARROW("arrow", 0xb200, true),
+    LINE("line", 0xa1ff, ControlType.NONE),
+    BUTTON("button", 0xa200, ControlType.NONE),
+    MULTIBOX("multibox", 0xa3ff, ControlType.NONE),
+    SPEED("speed", 0xa500, ControlType.NUMERIC),
+    PAUSE("pause", 0xa600, ControlType.NUMERIC),
+    COLOUR("colour", 0xa700, ControlType.NUMERIC),
+    VAR("var", 0xa800, ControlType.NUMERIC),
+    XOFFSET("xoffset", 0xad00, ControlType.NUMERIC),
+    YOFFSET("yoffset", 0xae00, ControlType.NUMERIC),
+    SAUTO("sauto", 0xb000, ControlType.NUMERIC),
+    ELEMENT("element", 0xb100, ControlType.NUMERIC),
+    ARROW("arrow", 0xb200, ControlType.NUMERIC),
+    ACTION("action", 0xc000, ControlType.STRING),
 
-    INVALID("chr", 0, true),
+    INVALID("chr", 0, ControlType.NUMERIC),
     ;
 
     public static CONTROLS fromControl(final int control) {
       for(final CONTROLS c : CONTROLS.values()) {
-        if(c.hasParam) {
+        if(c.paramType != ControlType.NONE) {
           if((c.control & 0xff00) == (control & 0xff00)) {
             return c;
           }
@@ -329,12 +357,18 @@ public class LodString extends Entry {
 
     public final String name;
     public final int control;
-    public final boolean hasParam;
+    public final ControlType paramType;
 
-    CONTROLS(final String name, final int control, final boolean hasParam) {
+    CONTROLS(final String name, final int control, final ControlType paramType) {
       this.name = name;
       this.control = control;
-      this.hasParam = hasParam;
+      this.paramType = paramType;
     }
+  }
+
+  private enum ControlType {
+    NONE,
+    NUMERIC,
+    STRING,
   }
 }

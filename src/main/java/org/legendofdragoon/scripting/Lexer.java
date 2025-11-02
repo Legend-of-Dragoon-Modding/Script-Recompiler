@@ -31,6 +31,7 @@ public class Lexer {
   public static final Pattern INCLUDE_PATTERN = Pattern.compile("^#include\\s+([^;]+)\\s*;?.*$", Pattern.CASE_INSENSITIVE);
 
   public static final String NUMBER_SUBPATTERN = "0x[a-f\\d]{1,8}|\\d{1,10}";
+  public static final String ID_SUBPATTERN = ".*?:.*?";
   public static final Pattern LINE_PATTERN = Pattern.compile("^\\s*?(?:[a-f0-9]+\\s+)?([a-z]\\w*?)(?:\\s+(.+))?$", Pattern.CASE_INSENSITIVE);
   public static final Pattern NUMBER_PATTERN = Pattern.compile("^-?(?:" + NUMBER_SUBPATTERN + ")$", Pattern.CASE_INSENSITIVE);
   public static final Pattern LABEL_PATTERN = Pattern.compile("^(\\w+):$", Pattern.CASE_INSENSITIVE);
@@ -52,7 +53,7 @@ public class Lexer {
   public static final Pattern GAMEVAR_3_PATTERN = Pattern.compile("^var\\s*?\\[\\s*?(" + NUMBER_SUBPATTERN + ")\\s*?\\+\\s*?(" + NUMBER_SUBPATTERN + ")\\s*?]$");
 
   public static final Pattern INLINE_3_MATCHER = Pattern.compile("^inl\\s*?\\[\\s*?(" + NUMBER_SUBPATTERN + "|:\\w+)\\s*?\\[\\s*?(" + NUMBER_SUBPATTERN + "|:\\w+)\\s*?\\[\\s*?stor\\s*?\\[\\s*?(" + NUMBER_SUBPATTERN + ")\\s*?]\\s*?]\\s*?]\\s*?]$", Pattern.CASE_INSENSITIVE);
-  public static final Pattern CONTROL_PATTERN = Pattern.compile("^<\\s*?([a-z]+)(?:\\s*?=\\s*?(" + NUMBER_SUBPATTERN + "))?\\s*?>$", Pattern.CASE_INSENSITIVE);
+  public static final Pattern CONTROL_PATTERN = Pattern.compile("^<\\s*?([a-z]+)(?:\\s*?=\\s*?(" + NUMBER_SUBPATTERN + '|' + ID_SUBPATTERN + "))?\\s*?>$", Pattern.CASE_INSENSITIVE);
 
   public static final Pattern GAMEVAR_ARRAY_3_PATTERN = Pattern.compile("^var\\s*?\\[\\s*?(" + NUMBER_SUBPATTERN + ")\\s*?]\\s*?\\[\\s*?(" + NUMBER_SUBPATTERN + ")\\s*?]$", Pattern.CASE_INSENSITIVE);
   public static final Pattern GAMEVAR_ARRAY_4_PATTERN = Pattern.compile("^var\\s*?\\[\\s*?(" + NUMBER_SUBPATTERN + ")\\s*?\\s*?\\+\\s*?stor\\s*?\\[\\s*?(" + NUMBER_SUBPATTERN + ")\\s*?]\\s*?]\\s*?\\[\\s*?(" + NUMBER_SUBPATTERN + ")\\s*?]$", Pattern.CASE_INSENSITIVE);
@@ -61,7 +62,7 @@ public class Lexer {
 
   public static final Pattern REG_PATTERN = Pattern.compile("^reg\\s*?\\[\\s*?(" + NUMBER_SUBPATTERN + ")\\s*?]$", Pattern.CASE_INSENSITIVE);
   public static final Pattern REG_VAR_PATTERN = Pattern.compile("^reg\\s*?\\[\\s*?stor\\[\\s*?(" + NUMBER_SUBPATTERN + ")\\s*?]\\s*?]$", Pattern.CASE_INSENSITIVE);
-  public static final Pattern ID_PATTERN = Pattern.compile("^id\\s*?\\[\\s*?(.*?:.*?)\\s*?]$", Pattern.CASE_INSENSITIVE);
+  public static final Pattern ID_PATTERN = Pattern.compile("^id\\s*?\\[\\s*?(" + ID_SUBPATTERN + ")\\s*?]$", Pattern.CASE_INSENSITIVE);
 
   private final Meta meta;
 
