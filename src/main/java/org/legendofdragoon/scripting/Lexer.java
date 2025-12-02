@@ -591,6 +591,10 @@ public class Lexer {
         return Integer.parseUnsignedInt(val.substring(2), 16);
       }
 
+      if(val.startsWith("-0x")) {
+        return -Integer.parseUnsignedInt(val.substring(3), 16);
+      }
+
       return Integer.parseInt(val);
     }
 
