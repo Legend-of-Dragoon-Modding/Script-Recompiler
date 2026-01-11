@@ -151,6 +151,7 @@ public final class Shell {
             try {
               final int address = Integer.parseInt(parts[0], 16);
               final int count = Integer.parseInt(parts[1]);
+              LOGGER.info("Using table length %#x=%d", address, count);
               disassembler.tableLengths.put(address, count);
             } catch(final NumberFormatException e) {
               helper.printHelp("Usage:", options);
