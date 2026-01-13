@@ -3,7 +3,7 @@ package org.legendofdragoon.scripting.resolution;
 import java.util.Arrays;
 
 public class RegisterSet {
-  public final Register[] stor = new Register[33];
+  public final Register[] stor = new Register[63];
 
   public RegisterSet() {
     Arrays.setAll(this.stor, i -> new Register());
