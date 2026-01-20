@@ -81,14 +81,22 @@ public class Tokenizer {
     final List<Entry> entries = new ArrayList<>();
     final Map<String, Integer> labels = new HashMap<>();
     final Set<String> tables = new HashSet<>();
+    final Set<Path> includedScripts = new HashSet<>();
 
     for(int lineIndex = 0; lineIndex < lines.size(); lineIndex++) {
-      String line = lines.get(lineIndex);
+      final String line = lines.get(lineIndex);
       final int address = entries.size() * 0x4;
 
       final Matcher includeMatcher = INCLUDE_PATTERN.matcher(line);
       if(includeMatcher.matches()) {
         final Path originalIncludeFile = Path.of(includeMatcher.group(1));
+
+        if(includedScripts.contains(originalIncludeFile)) {
+          continue;
+        }
+
+        includedScripts.add(originalIncludeFile);
+
         final Path includeFile = Include.resolve(includePaths, originalIncludeFile);
 
         final List<String> newLines = new ArrayList<>(lines.subList(0, lineIndex));
@@ -100,7 +108,10 @@ public class Tokenizer {
 
         newLines.addAll(lines.subList(lineIndex + 1, lines.size()));
         lines = newLines;
-        line = lines.get(lineIndex);
+
+        // Process the line that was just injected in case it's also an include
+        lineIndex--;
+        continue;
       }
 
       final Matcher labelMatcher = LABEL_PATTERN.matcher(line);
