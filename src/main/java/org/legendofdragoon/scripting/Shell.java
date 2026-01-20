@@ -92,6 +92,10 @@ public final class Shell {
     options.addRequiredOption("i", "in", true, "The input file");
     options.addRequiredOption("o", "out", true, "The output file");
 
+    if("c".equals(args[0]) || "compile".equals(args[0])) {
+      options.addOption("L", "libs", true, "Add a library directory against which #includes will be resolved");
+    }
+
     if("d".equals(args[0]) || "decompile".equals(args[0])) {
       options.addOption("b", "branch", true, "Force the decompiler to decompile this branch");
       options.addOption("t", "table-length", true, "Gives the table at the given address a specific length (e.g. 124c=5)");
@@ -182,11 +186,13 @@ public final class Shell {
       case "c", "compile" -> {
         LOGGER.info("Compiling... %s", inputFile);
 
+        final List<Path> includeDirs = readIncludeDirs(cmd.getOptionValues("libs"));
+
         final Compiler compiler = new Compiler();
         final Tokenizer tokenizer = new Tokenizer(meta);
 
         final String input = Files.readString(inputFile);
-        final Script tokenizedDecompiledSource = tokenizer.tokenize(inputFile, input);
+        final Script tokenizedDecompiledSource = tokenizer.tokenize(includeDirs, input);
         final int[] recompiledSource = compiler.compile(tokenizedDecompiledSource);
 
         Files.createDirectories(outputFile.getParent());
@@ -198,6 +204,21 @@ public final class Shell {
         System.exit(1);
       }
     }
+  }
+
+  private static List<Path> readIncludeDirs(final String[] includeDirsIn) {
+    final List<Path> includeDirs = new ArrayList<>();
+    for(final String includeDirIn : includeDirsIn) {
+      final Path includeDir = Path.of(includeDirIn);
+
+      if(!Files.exists(includeDir)) {
+        throw new IncludeFailedException("Include dir " + includeDir + " does not exist");
+      }
+
+      includeDirs.add(includeDir);
+    }
+
+    return includeDirs;
   }
 
   private static void generateDiff(final MetaManager metaManager, final String[] args) throws IOException, NoSuchVersionException, CsvException {

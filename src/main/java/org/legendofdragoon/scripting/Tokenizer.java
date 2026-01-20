@@ -69,7 +69,7 @@ public class Tokenizer {
     this.meta = meta;
   }
 
-  public Script tokenize(final Path path, final String source) {
+  public Script tokenize(final List<Path> includePaths, final String source) {
     List<String> lines = this.splitSource(source);
 
     final List<Entry> entries = new ArrayList<>();
@@ -82,17 +82,14 @@ public class Tokenizer {
 
       final Matcher includeMatcher = INCLUDE_PATTERN.matcher(line);
       if(includeMatcher.matches()) {
-        Path includePath = Path.of(includeMatcher.group(1));
-
-        if(!includePath.isAbsolute()) {
-          includePath = path.getParent().resolve(includePath);
-        }
+        final Path originalIncludeFile = Path.of(includeMatcher.group(1));
+        final Path includeFile = Include.resolve(includePaths, originalIncludeFile);
 
         final List<String> newLines = new ArrayList<>(lines.subList(0, lineIndex));
         try {
-          newLines.addAll(this.splitSource(Files.readString(includePath)));
+          newLines.addAll(this.splitSource(Files.readString(includeFile)));
         } catch(final IOException e) {
-          throw new IncludeFailedException("Include for " + includePath + " failed", e);
+          throw new IncludeFailedException("Include for " + includeFile + " failed", e);
         }
 
         newLines.addAll(lines.subList(lineIndex + 1, lines.size()));
