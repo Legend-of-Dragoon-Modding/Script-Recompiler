@@ -176,7 +176,7 @@ public final class Shell {
         LOGGER.info("Decompiling %s...", inputFile);
 
         final byte[] bytes = Files.readAllBytes(inputFile);
-        final Script script = disassembler.disassemble(bytes, extraBranches, tableLengths);
+        final Script script = disassembler.disassemble(inputFile.toString(), bytes, extraBranches, tableLengths);
         final String decompiledOutput = translator.translate(script, meta, stripNames, stripComments, lineNumbers);
 
         Files.createDirectories(outputFile.getParent());
@@ -192,7 +192,7 @@ public final class Shell {
         final Tokenizer tokenizer = new Tokenizer(meta);
 
         final String input = Files.readString(inputFile);
-        final Script tokenizedDecompiledSource = tokenizer.tokenize(includeDirs, input);
+        final Script tokenizedDecompiledSource = tokenizer.tokenize(inputFile.toString(), includeDirs, input);
         final int[] recompiledSource = compiler.compile(tokenizedDecompiledSource);
 
         Files.createDirectories(outputFile.getParent());

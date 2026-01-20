@@ -1,5 +1,7 @@
 package org.legendofdragoon.scripting;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.legendofdragoon.scripting.meta.Meta;
 import org.legendofdragoon.scripting.resolution.ResolvedValue;
 import org.legendofdragoon.scripting.tokens.Data;
@@ -27,6 +29,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class Tokenizer {
+  private static final Logger LOGGER = LogManager.getFormatterLogger(Tokenizer.class);
+
   public static final Pattern INCLUDE_PATTERN = Pattern.compile("^#include\\s+([^;]+)\\s*;?.*$", Pattern.CASE_INSENSITIVE);
 
   public static final String NUMBER_SUBPATTERN = "0x[a-f\\d]{1,8}|\\d{1,10}";
@@ -69,7 +73,9 @@ public class Tokenizer {
     this.meta = meta;
   }
 
-  public Script tokenize(final List<Path> includePaths, final String source) {
+  public Script tokenize(final String name, final List<Path> includePaths, final String source) {
+    LOGGER.info("Tokenizing %s", name);
+
     List<String> lines = this.splitSource(source);
 
     final List<Entry> entries = new ArrayList<>();
@@ -192,7 +198,7 @@ public class Tokenizer {
       maxOffset = tableOffset;
     }
 
-    final Script script = new Script(entries.size());
+    final Script script = new Script(name, entries.size());
     entries.toArray(script.entries);
 
     for(final Map.Entry<String, Integer> entry : labels.entrySet()) {
@@ -230,6 +236,7 @@ public class Tokenizer {
 
           return new Entrypoint(address, paramsStr.substring(1));
         }
+
         if("data".equalsIgnoreCase(command)) {
           final Matcher stringMatcher = STRING_PATTERN.matcher(paramsStr);
           if(stringMatcher.matches()) {
@@ -238,6 +245,7 @@ public class Tokenizer {
 
           return new Data(address, this.parseInt(paramsStr));
         }
+
         if("rel".equalsIgnoreCase(command)) {
           if(!LABEL_PARAM_PATTERN.matcher(paramsStr).matches()) {
             throw new RuntimeException("Invalid relative pointer label " + paramsStr);
@@ -245,6 +253,7 @@ public class Tokenizer {
 
           return new PointerTable(address, 0, new String[] { paramsStr.substring(1) });
         }
+
         final OpType opType = OpType.byName(command);
 
         if(opType != null) {

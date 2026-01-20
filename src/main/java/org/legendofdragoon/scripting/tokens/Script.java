@@ -17,6 +17,8 @@ import java.util.Set;
 public class Script {
   private static final Logger LOGGER = LogManager.getFormatterLogger(Script.class);
 
+  public final String name;
+
   public final Entry[] entries;
   /** Unique entrypoints */
   public final Set<Integer> entrypoints = new HashSet<>();
@@ -35,9 +37,10 @@ public class Script {
   public final List<Runnable> buildStrings = new ArrayList<>();
   private int labelCount;
 
-  private Deque<ScriptRegisters> registerStack = new LinkedList<>();
+  private final Deque<ScriptRegisters> registerStack = new LinkedList<>();
 
-  public Script(final int length) {
+  public Script(final String name, final int length) {
+    this.name = name;
     this.entries = new Entry[length];
     this.registerStack.push(new ScriptRegisters());
     this.currentRegisters().allocateDecompState();
@@ -93,5 +96,10 @@ public class Script {
 
   public void popRegisters() {
     this.registerStack.pop();
+  }
+
+  @Override
+  public String toString() {
+    return "Script[" + this.name + ']';
   }
 }

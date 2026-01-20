@@ -40,10 +40,10 @@ public class Disassembler {
     this.meta = meta;
   }
 
-  public Script disassemble(final byte[] bytes, final List<Integer> extraBranches, final Map<Integer, Integer> tableLengths) {
+  public Script disassemble(final String name, final byte[] bytes, final List<Integer> extraBranches, final Map<Integer, Integer> tableLengths) {
     final State state = new State(bytes);
 
-    final Script script = new Script(state.length() / 4);
+    final Script script = new Script(name, state.length() / 4);
 
     this.getEntrypoints(script, state);
 
@@ -106,7 +106,7 @@ public class Disassembler {
       return;
     }
 
-    LOGGER.info(DISASSEMBLY, "Probing branch %x", offset);
+    LOGGER.info(DISASSEMBLY, "Probing %s branch %#x", script, offset);
     script.branches.add(offset);
 
     final ScriptRegisters registers = script.pushRegisters();
@@ -368,46 +368,50 @@ public class Disassembler {
       forcedLength = false;
     }
 
-    int earliestDestination = state.length();
-    int latestDestination = 0;
-    final List<Integer> destinations = new ArrayList<>();
-    final List<String> labels = new ArrayList<>();
-    for(
-      int entryAddress = tableAddress, entryIndex = 0;
-      entryAddress <= state.length() - 4 && script.entries[entryAddress / 4] == null && lengthPredicate.get(entryIndex, entryAddress, earliestDestination, latestDestination) && (forcedLength || !this.isProbablyOp(script, state, entryAddress) || this.isValidOp(state, tableAddress + state.wordAt(entryAddress) * 0x4));
-      entryAddress += 0x4, entryIndex++
-    ) {
-      final int destAddress = tableAddress + state.wordAt(entryAddress) * 0x4;
+    try {
+      int earliestDestination = state.length();
+      int latestDestination = 0;
+      final List<Integer> destinations = new ArrayList<>();
+      final List<String> labels = new ArrayList<>();
+      for(
+        int entryAddress = tableAddress, entryIndex = 0;
+        entryAddress <= state.length() - 4 && script.entries[entryAddress / 4] == null && lengthPredicate.get(entryIndex, entryAddress, earliestDestination, latestDestination) && (forcedLength || !this.isProbablyOp(script, state, entryAddress) || this.isValidOp(state, tableAddress + state.wordAt(entryAddress) * 0x4));
+        entryAddress += 0x4, entryIndex++
+      ) {
+        final int destAddress = tableAddress + state.wordAt(entryAddress) * 0x4;
 
-      if(destAddress < 0x4 || destAddress > state.length() - 0x4) {
-        break;
+        if(destAddress < 0x4 || destAddress > state.length() - 0x4) {
+          break;
+        }
+
+        if(!forcedLength && !destinationAddressHeuristic.test(destAddress)) {
+          break;
+        }
+
+        if(earliestDestination > destAddress) {
+          earliestDestination = destAddress;
+        }
+
+        if(latestDestination < destAddress) {
+          latestDestination = destAddress;
+        }
+
+        tableDestinations.add(destAddress);
+        destinations.add(destAddress);
+        labels.add(script.addLabel(destAddress, "JMP_%x_%d".formatted(tableAddress, labels.size())));
       }
 
-      if(!forcedLength && !destinationAddressHeuristic.test(destAddress)) {
-        break;
+      if(labels.isEmpty()) {
+        LOGGER.warn("Empty table at 0x%x", tableAddress);
       }
 
-      if(earliestDestination > destAddress) {
-        earliestDestination = destAddress;
-      }
+      script.entries[tableAddress / 0x4] = new PointerTable(tableAddress, state.wordAt(tableAddress), labels.toArray(String[]::new));
 
-      if(latestDestination < destAddress) {
-        latestDestination = destAddress;
-      }
-
-      tableDestinations.add(destAddress);
-      destinations.add(destAddress);
-      labels.add(script.addLabel(destAddress, "JMP_%x_%d".formatted(tableAddress, labels.size())));
+      // Visit tables in reverse order so that it's easier to determine where tables end
+      destinations.stream().distinct().sorted(Comparator.reverseOrder()).forEach(visitor);
+    } catch(final Throwable t) {
+      throw new RuntimeException("Failed to parse table at %#x in script %s".formatted(tableAddress, script), t);
     }
-
-    if(labels.isEmpty()) {
-      LOGGER.warn("Empty table at 0x%x", tableAddress);
-    }
-
-    script.entries[tableAddress / 0x4] = new PointerTable(tableAddress, state.wordAt(tableAddress), labels.toArray(String[]::new));
-
-    // Visit tables in reverse order so that it's easier to determine where tables end
-    destinations.stream().distinct().sorted(Comparator.reverseOrder()).forEach(visitor);
   }
 
   private void handlePointerTable(final Script script, final State state, final Op op, final int paramIndex, final int tableAddress, final Map<Integer, Integer> tableLengths, final List<Runnable> buildStrings, final ResolvedValue length) {
