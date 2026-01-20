@@ -21,14 +21,10 @@ import org.legendofdragoon.scripting.tokens.Script;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.OptionalInt;
 import java.util.Set;
-import java.util.function.BiPredicate;
-import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.ToIntBiFunction;
@@ -39,24 +35,20 @@ public class Disassembler {
   private static final Marker DISASSEMBLY = MarkerManager.getMarker("DISASSEMBLY");
 
   private final Meta meta;
-  private State state;
-
-  public final List<Integer> extraBranches = new ArrayList<>();
-  public final Map<Integer, Integer> tableLengths = new HashMap<>();
 
   public Disassembler(final Meta meta) {
     this.meta = meta;
   }
 
-  public Script disassemble(final byte[] bytes) {
-    this.state = new State(bytes);
+  public Script disassemble(final byte[] bytes, final List<Integer> extraBranches, final Map<Integer, Integer> tableLengths) {
+    final State state = new State(bytes);
 
-    final Script script = new Script(this.state.length() / 4);
+    final Script script = new Script(state.length() / 4);
 
-    this.getEntrypoints(script);
+    this.getEntrypoints(script, state);
 
     for(final int entrypoint : script.entrypoints) {
-      this.probeBranch(script, entrypoint);
+      this.probeBranch(script, state, tableLengths, entrypoint);
     }
 
     for(int entryIndex = 0; entryIndex < script.entries.length; entryIndex++) {
@@ -94,21 +86,21 @@ public class Disassembler {
       }
     }
 
-    for(final int extraBranch : this.extraBranches) {
-      this.probeBranch(script, extraBranch);
+    for(final int extraBranch : extraBranches) {
+      this.probeBranch(script, state, tableLengths, extraBranch);
     }
 
     script.buildStrings.forEach(Runnable::run);
 
-    this.fillStrings(script);
-    this.fillData(script);
+    this.fillStrings(script, state);
+    this.fillData(script, state);
 
     LOGGER.info(DISASSEMBLY, "Probing complete");
 
     return script;
   }
 
-  private void probeBranch(final Script script, final int offset) {
+  private void probeBranch(final Script script, final State state, final Map<Integer, Integer> tableLengths, final int offset) {
     // Made our way into another branch, no need to parse again
     if(script.branches.contains(offset)) {
       return;
@@ -119,40 +111,40 @@ public class Disassembler {
 
     final ScriptRegisters registers = script.pushRegisters();
 
-    final int oldHeaderOffset = this.state.headerOffset();
-    final int oldCurrentOffset = this.state.currentOffset();
+    final int oldHeaderOffset = state.headerOffset();
+    final int oldCurrentOffset = state.currentOffset();
 
-    this.state.jump(offset);
+    state.jump(offset);
 
     outer:
-    while(this.state.hasMore()) {
-      this.state.step();
+    while(state.hasMore()) {
+      state.step();
 
-      final Op op = this.parseHeader(this.state.currentOffset());
+      final Op op = this.parseHeader(state, state.currentOffset());
 
       if(op == null) { // Invalid op or invalid param count
         //TODO ran into invalid code
         break;
       }
 
-      this.state.advance();
+      state.advance();
 
-      int entryOffset = this.state.headerOffset() / 4;
+      int entryOffset = state.headerOffset() / 4;
       script.entries[entryOffset++] = op;
 
       // Parse params
       for(int i = 0; i < op.params.length; i++) {
-        final ParameterType paramType = ParameterType.byOpcode(this.state.paramType());
+        final ParameterType paramType = ParameterType.byOpcode(state.paramType());
 
         // Read raw values for param
-        final int[] rawValues = new int[paramType.getWidth(this.state)];
-        for(int n = 0; n < paramType.getWidth(this.state); n++) {
-          rawValues[n] = this.state.wordAt(this.state.currentOffset() + n * 0x4);
+        final int[] rawValues = new int[paramType.getWidth(state)];
+        for(int n = 0; n < paramType.getWidth(state); n++) {
+          rawValues[n] = state.wordAt(state.currentOffset() + n * 0x4);
         }
 
         // Try to resolve param values and build param
-        final int paramOffset = this.state.currentOffset();
-        final ResolvedValue resolved = this.parseParamValue(registers, this.state, paramType);
+        final int paramOffset = state.currentOffset();
+        final ResolvedValue resolved = this.parseParamValue(registers, state, paramType);
         final Param param = new Param(paramOffset, paramType, rawValues, resolved, paramType.isInline() && resolved.isPresent() ? script.addLabel(resolved.get(), "LABEL_" + script.getLabelCount()) : null);
 
         // Fill entries for param
@@ -182,10 +174,10 @@ public class Disassembler {
               }
             };
 
-            param.resolvedValue.ifPresent(tableAddress -> this.probeTableOfBranches(script, tableDestinations, tableAddress, op.params[0].resolvedValue));
+            param.resolvedValue.ifPresent(tableAddress -> this.probeTableOfBranches(script, state, tableLengths, tableDestinations, tableAddress, op.params[0].resolvedValue));
           } else {
             final int finalI = i;
-            param.resolvedValue.ifPresent(tableAddress -> this.handlePointerTable(script, op, finalI, tableAddress, script.buildStrings, op.params[0].resolvedValue));
+            param.resolvedValue.ifPresent(tableAddress -> this.handlePointerTable(script, state, op, finalI, tableAddress, tableLengths, script.buildStrings, op.params[0].resolvedValue));
           }
         } else if(op.type == OpType.CALL) {
           if(i >= this.meta.methods[op.headerParam].params.length) {
@@ -262,14 +254,14 @@ public class Disassembler {
                   script.forkJumps.add(offset1);
                 }
 
-                this.probeBranch(script, offset1);
-              }, () -> LOGGER.warn("Skipping CALL at %x due to unknowable parameter", this.state.headerOffset()));
+                this.probeBranch(script, state, tableLengths, offset1);
+              }, () -> LOGGER.warn("Skipping CALL at %x due to unknowable parameter", state.headerOffset()));
             }
           }
         }
 
         case JMP -> {
-          op.params[0].resolvedValue.ifPresentOrElse(offset1 -> this.probeBranch(script, offset1), () -> LOGGER.warn("Skipping JUMP at %x due to unknowable parameter", this.state.headerOffset()));
+          op.params[0].resolvedValue.ifPresentOrElse(offset1 -> this.probeBranch(script, state, tableLengths, offset1), () -> LOGGER.warn("Skipping JUMP at %x due to unknowable parameter", state.headerOffset()));
 
           if(op.params[0].resolvedValue.isPresent()) {
             break outer;
@@ -278,10 +270,10 @@ public class Disassembler {
 
         case JMP_CMP, JMP_CMP_0 -> {
           op.params[op.params.length - 1].resolvedValue.ifPresentOrElse(addr -> {
-            this.probeBranch(script, this.state.currentOffset());
-            this.probeBranch(script, addr);
+            this.probeBranch(script, state, tableLengths, state.currentOffset());
+            this.probeBranch(script, state, tableLengths, addr);
           }, () ->
-            LOGGER.warn("Skipping %s at %x due to unknowable parameter", op.type, this.state.headerOffset())
+            LOGGER.warn("Skipping %s at %x due to unknowable parameter", op.type, state.headerOffset())
           );
 
           // Jumps are terminal
@@ -292,12 +284,12 @@ public class Disassembler {
           op.params[1].resolvedValue.ifPresentOrElse(tableOffset -> {
             if(tableOffset != 0) { // Table out of bounds gets replaced with 0 above
               if(op.params[1].type.isInlineTable()) {
-                this.probeTableOfTables(script, script.jumpTableDests, tableOffset, op.params[0].resolvedValue);
+                this.probeTableOfTables(script, state, tableLengths, script.jumpTableDests, tableOffset, op.params[0].resolvedValue);
               } else {
-                this.probeTableOfBranches(script, script.jumpTableDests, tableOffset, op.params[0].resolvedValue);
+                this.probeTableOfBranches(script, state, tableLengths, script.jumpTableDests, tableOffset, op.params[0].resolvedValue);
               }
             }
-          }, () -> LOGGER.warn("Skipping JMP_TABLE at %x due to unknowable parameter", this.state.headerOffset()));
+          }, () -> LOGGER.warn("Skipping JMP_TABLE at %x due to unknowable parameter", state.headerOffset()));
 
           // Jumps are terminal
           break outer;
@@ -306,8 +298,8 @@ public class Disassembler {
         case GOSUB -> {
           op.params[0].resolvedValue.ifPresentOrElse(offset1 -> {
             script.subs.add(offset1);
-            this.probeBranch(script, offset1);
-          }, () -> LOGGER.warn("Skipping GOSUB at %x due to unknowable parameter", this.state.headerOffset()));
+            this.probeBranch(script, state, tableLengths, offset1);
+          }, () -> LOGGER.warn("Skipping GOSUB at %x due to unknowable parameter", state.headerOffset()));
 
           //TODO for now, we can't track what was modified by the subroutine, so we have to revert everything to unknown
           registers.getDecompState().clear();
@@ -317,12 +309,12 @@ public class Disassembler {
           op.params[1].resolvedValue.ifPresentOrElse(tableOffset -> {
             if(tableOffset != 0) { // Table out of bounds gets replaced with 0 above
               if(op.params[1].type.isInlineTable()) {
-                this.probeTableOfTables(script, script.subs, tableOffset, op.params[0].resolvedValue);
+                this.probeTableOfTables(script, state, tableLengths, script.subs, tableOffset, op.params[0].resolvedValue);
               } else {
-                this.probeTableOfBranches(script, script.subs, tableOffset, op.params[0].resolvedValue);
+                this.probeTableOfBranches(script, state, tableLengths, script.subs, tableOffset, op.params[0].resolvedValue);
               }
             }
-          }, () -> LOGGER.warn("Skipping GOSUB_TABLE at %x due to unknowable parameter", this.state.headerOffset()));
+          }, () -> LOGGER.warn("Skipping GOSUB_TABLE at %x due to unknowable parameter", state.headerOffset()));
 
           //TODO for now, we can't track what was modified by the subroutine, so we have to revert everything to unknown
           registers.getDecompState().clear();
@@ -334,26 +326,26 @@ public class Disassembler {
 
         case FORK -> op.params[1].resolvedValue.ifPresentOrElse(offset1 -> {
           script.forkJumps.add(offset1);
-          this.probeBranch(script, offset1);
-        }, () -> LOGGER.warn("Skipping FORK at %x due to unknowable parameter", this.state.headerOffset()));
+          this.probeBranch(script, state, tableLengths, offset1);
+        }, () -> LOGGER.warn("Skipping FORK at %x due to unknowable parameter", state.headerOffset()));
       }
     }
 
     script.popRegisters();
 
-    this.state.headerOffset(oldHeaderOffset);
-    this.state.currentOffset(oldCurrentOffset);
+    state.headerOffset(oldHeaderOffset);
+    state.currentOffset(oldCurrentOffset);
   }
 
-  private void probeTableOfTables(final Script script, final Set<Integer> tableDestinations, final int tableAddress, final ResolvedValue length) {
-    this.probeTable(script, script.subTables, tableDestinations, tableAddress, subtableAddress -> !this.isProbablyOp(script, subtableAddress), subtableAddress -> this.probeTableOfBranches(script, tableDestinations, subtableAddress, ResolvedValue.unresolved()), length);
+  private void probeTableOfTables(final Script script, final State state, final Map<Integer, Integer> tableLengths, final Set<Integer> tableDestinations, final int tableAddress, final ResolvedValue length) {
+    this.probeTable(script, state, script.subTables, tableLengths, tableDestinations, tableAddress, subtableAddress -> !this.isProbablyOp(script, state, subtableAddress), subtableAddress -> this.probeTableOfBranches(script, state, tableLengths, tableDestinations, subtableAddress, ResolvedValue.unresolved()), length);
   }
 
-  private void probeTableOfBranches(final Script script, final Set<Integer> tableDestinations, final int subtableAddress, final ResolvedValue length) {
-    this.probeTable(script, script.subTables, tableDestinations, subtableAddress, this::isValidOp, branchAddress -> this.probeBranch(script, branchAddress), length);
+  private void probeTableOfBranches(final Script script, final State state, final Map<Integer, Integer> tableLengths, final Set<Integer> tableDestinations, final int subtableAddress, final ResolvedValue length) {
+    this.probeTable(script, state, script.subTables, tableLengths, tableDestinations, subtableAddress, subtableAddress2 -> this.isValidOp(state, subtableAddress2), branchAddress -> this.probeBranch(script, state, tableLengths, branchAddress), length);
   }
 
-  private void probeTable(final Script script, final Set<Integer> tables, final Set<Integer> tableDestinations, final int tableAddress, final Predicate<Integer> destinationAddressHeuristic, final Consumer<Integer> visitor, final ResolvedValue length) {
+  private void probeTable(final Script script, final State state, final Set<Integer> tables, final Map<Integer, Integer> tableLengths, final Set<Integer> tableDestinations, final int tableAddress, final Predicate<Integer> destinationAddressHeuristic, final Consumer<Integer> visitor, final ResolvedValue length) {
     if(tables.contains(tableAddress)) {
       return;
     }
@@ -362,9 +354,9 @@ public class Disassembler {
 
     final boolean forcedLength;
     final LengthPredicate lengthPredicate;
-    if(this.tableLengths.containsKey(tableAddress)) { // Explicit table length
+    if(tableLengths.containsKey(tableAddress)) { // Explicit table length
       lengthPredicate = (entryIndex, entryAddress, earliestDestination, latestDestination) ->
-        entryIndex < this.tableLengths.get(tableAddress);
+        entryIndex < tableLengths.get(tableAddress);
       forcedLength = true;
     } else if(length.isRange()) { // Table length determined by possible range of register
       lengthPredicate = (entryIndex, entryAddress, earliestDestination, latestDestination) ->
@@ -372,22 +364,22 @@ public class Disassembler {
       forcedLength = true;
     } else { // Heuristic that only allows all positive or all negative pointers (breaks a few tables like in Kazas garbage room) but yields much better results overall)
       lengthPredicate = (entryIndex, entryAddress, earliestDestination, latestDestination) ->
-        this.state.wordAt(entryAddress) > 0 ? entryAddress < earliestDestination : entryAddress > latestDestination;
+        state.wordAt(entryAddress) > 0 ? entryAddress < earliestDestination : entryAddress > latestDestination;
       forcedLength = false;
     }
 
-    int earliestDestination = this.state.length();
+    int earliestDestination = state.length();
     int latestDestination = 0;
     final List<Integer> destinations = new ArrayList<>();
     final List<String> labels = new ArrayList<>();
     for(
       int entryAddress = tableAddress, entryIndex = 0;
-      entryAddress <= this.state.length() - 4 && script.entries[entryAddress / 4] == null && lengthPredicate.get(entryIndex, entryAddress, earliestDestination, latestDestination) && (forcedLength || !this.isProbablyOp(script, entryAddress) || this.isValidOp(tableAddress + this.state.wordAt(entryAddress) * 0x4));
+      entryAddress <= state.length() - 4 && script.entries[entryAddress / 4] == null && lengthPredicate.get(entryIndex, entryAddress, earliestDestination, latestDestination) && (forcedLength || !this.isProbablyOp(script, state, entryAddress) || this.isValidOp(state, tableAddress + state.wordAt(entryAddress) * 0x4));
       entryAddress += 0x4, entryIndex++
     ) {
-      final int destAddress = tableAddress + this.state.wordAt(entryAddress) * 0x4;
+      final int destAddress = tableAddress + state.wordAt(entryAddress) * 0x4;
 
-      if(destAddress < 0x4 || destAddress > this.state.length() - 0x4) {
+      if(destAddress < 0x4 || destAddress > state.length() - 0x4) {
         break;
       }
 
@@ -412,13 +404,13 @@ public class Disassembler {
       LOGGER.warn("Empty table at 0x%x", tableAddress);
     }
 
-    script.entries[tableAddress / 0x4] = new PointerTable(tableAddress, this.state.wordAt(tableAddress), labels.toArray(String[]::new));
+    script.entries[tableAddress / 0x4] = new PointerTable(tableAddress, state.wordAt(tableAddress), labels.toArray(String[]::new));
 
     // Visit tables in reverse order so that it's easier to determine where tables end
     destinations.stream().distinct().sorted(Comparator.reverseOrder()).forEach(visitor);
   }
 
-  private void handlePointerTable(final Script script, final Op op, final int paramIndex, final int tableAddress, final List<Runnable> buildStrings, final ResolvedValue length) {
+  private void handlePointerTable(final Script script, final State state, final Op op, final int paramIndex, final int tableAddress, final Map<Integer, Integer> tableLengths, final List<Runnable> buildStrings, final ResolvedValue length) {
     if(tableAddress / 4 >= script.entries.length) {
       LOGGER.warn("Op %s param %d points to invalid pointer table 0x%x", op, paramIndex, tableAddress);
       return;
@@ -429,35 +421,35 @@ public class Disassembler {
     }
 
     final LengthPredicate lengthPredicate;
-    if(this.tableLengths.containsKey(tableAddress)) { // Explicit table length
+    if(tableLengths.containsKey(tableAddress)) { // Explicit table length
       lengthPredicate = (entryIndex, entryAddress, earliestDestination, latestDestination) ->
-        entryIndex < this.tableLengths.get(tableAddress);
+        entryIndex < tableLengths.get(tableAddress);
     } else if(length.isRange()) { // Table length determined by possible range of register
       lengthPredicate = (entryIndex, entryAddress, earliestDestination, latestDestination) ->
         entryIndex < length.max();
     } else { // Heuristic that only allows all positive or all negative pointers (breaks a few tables like in Kazas garbage room) but yields much better results overall)
       lengthPredicate = (entryIndex, entryAddress, earliestDestination, latestDestination) ->
-        this.state.wordAt(entryAddress) > 0 ? entryAddress < earliestDestination : entryAddress > latestDestination;
+        state.wordAt(entryAddress) > 0 ? entryAddress < earliestDestination : entryAddress > latestDestination;
     }
 
     final List<Integer> destinations = new ArrayList<>();
     int entryCount = 0;
 
-    int earliestDestination = this.state.length();
+    int earliestDestination = state.length();
     int latestDestination = 0;
     for(
       int entryAddress = tableAddress, entryIndex = 0;
-      entryAddress <= this.state.length() - 4 && script.entries[entryAddress / 4] == null && lengthPredicate.get(entryIndex, entryAddress, earliestDestination, latestDestination);
+      entryAddress <= state.length() - 4 && script.entries[entryAddress / 4] == null && lengthPredicate.get(entryIndex, entryAddress, earliestDestination, latestDestination);
       entryAddress += 0x4, entryIndex++
     ) {
-      int destination = tableAddress + this.state.wordAt(entryAddress) * 0x4;
+      int destination = tableAddress + state.wordAt(entryAddress) * 0x4;
 
       if(op.type == OpType.CALL && "string".equalsIgnoreCase(this.meta.methods[op.headerParam].params[paramIndex].type)) {
         if(script.entries[entryAddress / 4] instanceof Op) {
           break;
         }
 
-        if(this.isProbablyOp(script, entryAddress)) {
+        if(this.isProbablyOp(script, state, entryAddress)) {
           boolean foundTerminator = false;
 
           // Look for a string terminator at the destination
@@ -467,7 +459,7 @@ public class Disassembler {
               break;
             }
 
-            final int word = this.state.wordAt(i * 0x4);
+            final int word = state.wordAt(i * 0x4);
             if((word & 0xffff) == 0xa0ff || (word >> 16 & 0xffff) == 0xa0ff) {
               foundTerminator = true;
               break;
@@ -478,11 +470,11 @@ public class Disassembler {
             break;
           }
         }
-      } else if(this.isProbablyOp(script, entryAddress)) {
+      } else if(this.isProbablyOp(script, state, entryAddress)) {
         break;
       }
 
-      if(destination >= this.state.length() - 0x4) {
+      if(destination >= state.length() - 0x4) {
         break;
       }
 
@@ -495,7 +487,7 @@ public class Disassembler {
       }
 
       if(op.type == OpType.GOSUB_TABLE || op.type == OpType.JMP_TABLE) {
-        destination = tableAddress + this.state.wordAt(destination) * 0x4;
+        destination = tableAddress + state.wordAt(destination) * 0x4;
       }
 
       destinations.add(destination);
@@ -507,7 +499,7 @@ public class Disassembler {
       labels[entryIndex] = script.addLabel(destinations.get(entryIndex), "PTR_%x_%d".formatted(tableAddress, entryIndex));
     }
 
-    final PointerTable table = new PointerTable(tableAddress, this.state.wordAt(tableAddress), labels);
+    final PointerTable table = new PointerTable(tableAddress, state.wordAt(tableAddress), labels);
     script.entries[tableAddress / 0x4] = table;
 
     // Add string entries if appropriate
@@ -536,17 +528,17 @@ public class Disassembler {
     }
   }
 
-  private void fillStrings(final Script script) {
+  private void fillStrings(final Script script, final State state) {
     for(final StringInfo string : script.strings) {
-      this.fillString(script, string.start, string.maxLength);
+      this.fillString(script, state, string.start, string.maxLength);
     }
   }
 
-  private void fillString(final Script script, final int address, final int maxLength) {
+  private void fillString(final Script script, final State state, final int address, final int maxLength) {
     final List<Integer> chars = new ArrayList<>();
 
     for(int i = 0; i < (maxLength != -1 ? maxLength : script.entries.length * 0x4 - address); i++) {
-      final int chr = this.state.wordAt(address + i / 2 * 0x4) >>> i % 2 * 16 & 0xffff;
+      final int chr = state.wordAt(address + i / 2 * 0x4) >>> i % 2 * 16 & 0xffff;
 
       // String end
       if(chr == 0xa0ff) {
@@ -563,19 +555,19 @@ public class Disassembler {
     }
   }
 
-  private void fillData(final Script script) {
+  private void fillData(final Script script, final State state) {
     for(int i = 0; i < script.entries.length; i++) {
       if(script.entries[i] == null) {
-        script.entries[i] = new Data(i * 0x4, this.state.wordAt(i * 0x4));
+        script.entries[i] = new Data(i * 0x4, state.wordAt(i * 0x4));
       }
     }
   }
 
-  private void getEntrypoints(final Script script) {
-    for(int i = 0; i < 0x20 && this.state.hasMore(); i++) { // Most have 0x10, some have less, player_combat_script is the only one I've seen with 0x20
-      final int entrypoint = this.state.currentWord();
+  private void getEntrypoints(final Script script, final State state) {
+    for(int i = 0; i < 0x20 && state.hasMore(); i++) { // Most have 0x10, some have less, player_combat_script is the only one I've seen with 0x20
+      final int entrypoint = state.currentWord();
 
-      if(!this.isValidOp(entrypoint)) {
+      if(!this.isValidOp(state, entrypoint)) {
         break;
       }
 
@@ -585,16 +577,16 @@ public class Disassembler {
       script.entrypoints.add(entrypoint);
       script.allEntrypoints.add(entrypoint);
       script.addUniqueLabel(entrypoint, label);
-      this.state.advance();
+      state.advance();
     }
   }
 
-  private Op parseHeader(final int offset) {
-    if(offset > this.state.length() - 4) {
+  private Op parseHeader(final State state, final int offset) {
+    if(offset > state.length() - 4) {
       return null;
     }
 
-    final int opcode = this.state.wordAt(offset);
+    final int opcode = state.wordAt(offset);
     final OpType type = OpType.byOpcode(opcode & 0xff);
 
     if(type == null) {
@@ -621,24 +613,24 @@ public class Disassembler {
     return new Op(offset, type, opParam, paramCount);
   }
 
-  private boolean isValidOp(final int offset) {
+  private boolean isValidOp(final State state, final int offset) {
     if((offset & 0x3) != 0) {
       return false;
     }
 
-    if(offset < 0x4 || offset >= this.state.length()) {
+    if(offset < 0x4 || offset >= state.length()) {
       return false;
     }
 
-    return this.parseHeader(offset) != null;
+    return this.parseHeader(state, offset) != null;
   }
 
-  private boolean isProbablyOp(final Script script, int address) {
+  private boolean isProbablyOp(final Script script, final State state, int address) {
     if((address & 0x3) != 0) {
       return false;
     }
 
-    if(address < 0x4 || address >= this.state.length()) {
+    if(address < 0x4 || address >= state.length()) {
       return false;
     }
 
@@ -649,7 +641,7 @@ public class Disassembler {
     final int testCount = 3;
     int certainty = 0;
     for(int opIndex = 0; opIndex < testCount; opIndex++) {
-      final Op op = this.parseHeader(address);
+      final Op op = this.parseHeader(state, address);
 
       if(op == null) {
         certainty -= testCount - opIndex;
@@ -662,7 +654,7 @@ public class Disassembler {
       address += 0x4;
 
       for(int paramIndex = 0; paramIndex < op.type.params.length; paramIndex++) {
-        final ParameterType parameterType = ParameterType.byOpcode(this.state.wordAt(address) >>> 24);
+        final ParameterType parameterType = ParameterType.byOpcode(state.wordAt(address) >>> 24);
 
         if(parameterType != ParameterType.IMMEDIATE) {
           certainty += 1;
@@ -720,7 +712,7 @@ public class Disassembler {
       default -> ResolvedValue.unresolved();
     };
 
-    this.state.advance(param.getWidth(state));
+    state.advance(param.getWidth(state));
     return value;
   }
 

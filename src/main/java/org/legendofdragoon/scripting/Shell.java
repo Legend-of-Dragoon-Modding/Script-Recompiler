@@ -25,6 +25,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public final class Shell {
   private Shell() { }
@@ -133,9 +137,12 @@ public final class Shell {
         final boolean stripNames = cmd.hasOption("no-names");
         final boolean lineNumbers = cmd.hasOption("line-numbers");
 
+        final List<Integer> extraBranches = new ArrayList<>();
+        final Map<Integer, Integer> tableLengths = new HashMap<>();
+
         if(branchesIn != null) {
           for(final String s : branchesIn) {
-            disassembler.extraBranches.add(Integer.parseInt(s, 16));
+            extraBranches.add(Integer.parseInt(s, 16));
           }
         }
 
@@ -152,7 +159,7 @@ public final class Shell {
               final int address = Integer.parseInt(parts[0], 16);
               final int count = Integer.parseInt(parts[1]);
               LOGGER.info("Using table length %#x=%d", address, count);
-              disassembler.tableLengths.put(address, count);
+              tableLengths.put(address, count);
             } catch(final NumberFormatException e) {
               helper.printHelp("Usage:", options);
               System.exit(1);
@@ -161,15 +168,12 @@ public final class Shell {
         }
 
         final Translator translator = new Translator();
-        translator.stripNames = stripNames;
-        translator.stripComments = stripComments;
-        translator.lineNumbers = lineNumbers;
 
         LOGGER.info("Decompiling %s...", inputFile);
 
         final byte[] bytes = Files.readAllBytes(inputFile);
-        final Script script = disassembler.disassemble(bytes);
-        final String decompiledOutput = translator.translate(script, meta);
+        final Script script = disassembler.disassemble(bytes, extraBranches, tableLengths);
+        final String decompiledOutput = translator.translate(script, meta, stripNames, stripComments, lineNumbers);
 
         Files.createDirectories(outputFile.getParent());
         Files.writeString(outputFile, decompiledOutput, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
