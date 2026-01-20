@@ -122,8 +122,8 @@ public final class Shell {
     LOGGER.info("Loading meta %s...", version);
     final Meta meta = metaManager.loadMeta(version);
 
-    final Path inputFile = Paths.get(cmd.getOptionValue("in")).toAbsolutePath();
-    final Path outputFile = Paths.get(cmd.getOptionValue("out")).toAbsolutePath();
+    final Path inputFile = Paths.get(cmd.getOptionValue("in")).toAbsolutePath().normalize();
+    final Path outputFile = Paths.get(cmd.getOptionValue("out")).toAbsolutePath().normalize();
 
     if(!Files.exists(inputFile)) {
       LOGGER.error("Error: input file does not exist");
@@ -184,7 +184,7 @@ public final class Shell {
       }
 
       case "c", "compile" -> {
-        LOGGER.info("Compiling... %s", inputFile);
+        LOGGER.info("Compiling %s...", inputFile);
 
         final List<Path> includeDirs = readIncludeDirs(cmd.getOptionValues("libs"));
 
