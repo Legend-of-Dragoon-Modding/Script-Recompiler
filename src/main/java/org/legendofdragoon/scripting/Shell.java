@@ -179,11 +179,11 @@ public final class Shell {
         LOGGER.info("Compiling... %s", inputFile);
 
         final Compiler compiler = new Compiler();
-        final Lexer lexer = new Lexer(meta);
+        final Tokenizer tokenizer = new Tokenizer(meta);
 
         final String input = Files.readString(inputFile);
-        final Script lexedDecompiledSource = lexer.lex(inputFile, input);
-        final int[] recompiledSource = compiler.compile(lexedDecompiledSource);
+        final Script tokenizedDecompiledSource = tokenizer.tokenize(inputFile, input);
+        final int[] recompiledSource = compiler.compile(tokenizedDecompiledSource);
 
         Files.createDirectories(outputFile.getParent());
         Files.write(outputFile, intsToBytes(recompiledSource), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);

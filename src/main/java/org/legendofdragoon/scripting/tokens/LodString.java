@@ -7,8 +7,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 
-import static org.legendofdragoon.scripting.Lexer.CONTROL_PATTERN;
-import static org.legendofdragoon.scripting.Lexer.NUMBER_PATTERN;
+import static org.legendofdragoon.scripting.Tokenizer.CONTROL_PATTERN;
+import static org.legendofdragoon.scripting.Tokenizer.NUMBER_PATTERN;
 
 public class LodString extends Entry {
   private static final Logger LOGGER = LogManager.getFormatterLogger();

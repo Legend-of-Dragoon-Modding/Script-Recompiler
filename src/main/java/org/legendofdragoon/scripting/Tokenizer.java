@@ -21,13 +21,12 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.OptionalInt;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class Lexer {
+public class Tokenizer {
   public static final Pattern INCLUDE_PATTERN = Pattern.compile("^#include\\s+([^;]+)\\s*;?.*$", Pattern.CASE_INSENSITIVE);
 
   public static final String NUMBER_SUBPATTERN = "0x[a-f\\d]{1,8}|\\d{1,10}";
@@ -66,11 +65,11 @@ public class Lexer {
 
   private final Meta meta;
 
-  public Lexer(final Meta meta) {
+  public Tokenizer(final Meta meta) {
     this.meta = meta;
   }
 
-  public Script lex(final Path path, final String source) {
+  public Script tokenize(final Path path, final String source) {
     List<String> lines = this.splitSource(source);
 
     final List<Entry> entries = new ArrayList<>();
@@ -113,7 +112,7 @@ public class Lexer {
         continue;
       }
 
-      final Entry entry = this.lexLine(address, line);
+      final Entry entry = this.tokenizeLine(address, line);
       entries.add(entry);
 
       if(entry instanceof final Op op) {
@@ -220,7 +219,7 @@ public class Lexer {
     return line.substring(0, pos);
   }
 
-  private Entry lexLine(final int address, final String line) {
+  private Entry tokenizeLine(final int address, final String line) {
     final Matcher lineMatcher = LINE_PATTERN.matcher(line);
     if(lineMatcher.matches()) {
       final String command = lineMatcher.group(1);
