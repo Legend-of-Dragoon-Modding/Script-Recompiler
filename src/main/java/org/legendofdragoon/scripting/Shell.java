@@ -208,14 +208,17 @@ public final class Shell {
 
   private static List<Path> readIncludeDirs(final String[] includeDirsIn) {
     final List<Path> includeDirs = new ArrayList<>();
-    for(final String includeDirIn : includeDirsIn) {
-      final Path includeDir = Path.of(includeDirIn);
 
-      if(!Files.exists(includeDir)) {
-        throw new IncludeFailedException("Include dir " + includeDir + " does not exist");
+    if(includeDirsIn != null) {
+      for(final String includeDirIn : includeDirsIn) {
+        final Path includeDir = Path.of(includeDirIn);
+
+        if(!Files.exists(includeDir)) {
+          throw new IncludeFailedException("Include dir " + includeDir + " does not exist");
+        }
+
+        includeDirs.add(includeDir);
       }
-
-      includeDirs.add(includeDir);
     }
 
     return includeDirs;
