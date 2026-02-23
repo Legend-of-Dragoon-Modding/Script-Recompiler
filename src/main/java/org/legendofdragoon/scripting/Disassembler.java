@@ -542,6 +542,11 @@ public class Disassembler {
     final List<Integer> chars = new ArrayList<>();
 
     for(int i = 0; i < (maxLength != -1 ? maxLength : script.entries.length * 0x4 - address); i++) {
+      if(address + i / 2 * 0x4 >= state.length()) {
+        script.addWarning(address, "String ran out of bounds");
+        break;
+      }
+
       final int chr = state.wordAt(address + i / 2 * 0x4) >>> i % 2 * 16 & 0xffff;
 
       // String end
