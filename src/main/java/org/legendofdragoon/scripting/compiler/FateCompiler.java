@@ -81,11 +81,16 @@ public class FateCompiler {
     
     def testFunction(someParam) {
       var variable = (someParam + 1) * 2;
+      stor[10] = 100;
     
       if(variable >= returnParam(someParam)) {
         while(variable > 0) {
           variable--;
         }
+      } else if(stor[10] == 100) {
+        variable++;
+      } else {
+        stor[10] = var[8];
       }
     
       var (a, b, c, d) = returnMultipleValues();

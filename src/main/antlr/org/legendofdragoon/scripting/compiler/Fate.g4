@@ -9,7 +9,7 @@ body : entrypoint+ function+ ;
 entrypoint : ENTRYPOINT IDENTIFIER TERM ;
 function : DEF IDENTIFIER identifier_list block ;
 
-if : IF LPAREN expression RPAREN block ;
+if : IF LPAREN expression RPAREN block (ELSE if | ELSE block)? ;
 while : WHILE LPAREN expression RPAREN block ;
 control : if | while ;
 
@@ -17,15 +17,15 @@ block : OPENER (statement | control)* CLOSER ;
 
 statement : (declaration | assignment | postfix | call | return) TERM ;
 postfix : IDENTIFIER postfix_op ;
-assignment : (IDENTIFIER | identifier_list) ASSIGN expression ;
+assignment : (assignable | assignable_list) ASSIGN expression ;
 declaration : VAR (IDENTIFIER | identifier_list) (ASSIGN expression)? ;
 
 call : IDENTIFIER (SCOPE IDENTIFIER)? expression_list ;
 return : RETURN (expression | expression_list)? ;
 
 identifier_list : LPAREN (IDENTIFIER (COMMA IDENTIFIER)*)? RPAREN ;
+assignable_list : LPAREN (assignable (COMMA assignable)*)? RPAREN ;
 expression_list : LPAREN (expression (COMMA expression)*)? RPAREN ;
-value_list : LPAREN (value (COMMA value)*)? RPAREN ;
 
 expression :
   LPAREN expression RPAREN |
@@ -37,7 +37,10 @@ expression :
   expression bit_op expression |
   value ;
 
-value : IDENTIFIER | NUMBER | call ;
+value : NUMBER | call | assignable ;
+assignable : IDENTIFIER | stor | gamevar ;
+stor : STOR LBRACKET NUMBER RBRACKET ;
+gamevar : VAR LBRACKET NUMBER RBRACKET (LBRACKET NUMBER RBRACKET)? ;
 
 postfix_op : INCR | DECR ;
 comp_op : EQ | NEQ | GT | LT | GTE | LTE | ANDC | ORC ;
@@ -93,12 +96,16 @@ COMMA : ',' ;
 LPAREN : '(' ;
 RPAREN : ')' ;
 
+LBRACKET : '[' ;
+RBRACKET : ']' ;
+
 OPENER : '{' ;
 CLOSER : '}' ;
 TERM : ';' ;
 
 SCOPE : '::' ;
 
+STOR : 'stor' ;
 IDENTIFIER : [a-zA-Z_][a-zA-Z0-9_]* ;
 NUMBER : [0-9]+ ;
 WHITESPACE : [ \n] -> skip ;

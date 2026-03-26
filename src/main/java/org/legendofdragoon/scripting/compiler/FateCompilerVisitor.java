@@ -94,12 +94,35 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
 
   @Override
   public FateValue visitIf(final FateParser.IfContext ctx) {
-    final String label = this.getLabel();
-
     final FateValue expr = this.visitExpression(ctx.expression());
+
+    final String label = this.getLabel();
     this.fate.addOp(new FateOp(OpType.JMP_CMP, new FateImmediate("=="), new FateImmediate("0"), expr, new FateLabelRef(label)));
-    this.visitBlock(ctx.block());
+    this.visitBlock(ctx.block().getFirst());
+
+    // if there's an else, we need to jump over it at the end of the if block
+    String endLabel = null;
+    if(ctx.if_() != null || ctx.block(1) != null) {
+      endLabel = this.getLabel();
+      this.fate.addOp(new FateOp(OpType.JMP, new FateLabelRef(endLabel)));
+    }
+
     this.fate.addOp(new FateLabel(label));
+
+    // else if
+    if(ctx.if_() != null) {
+      this.visitIf(ctx.if_());
+    }
+
+    // else
+    if(ctx.block(1) != null) {
+      this.visitBlock(ctx.block(1));
+    }
+
+    if(endLabel != null) {
+      this.fate.addOp(new FateLabel(endLabel));
+    }
+
     return null;
   }
 
@@ -150,18 +173,18 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
 
   @Override
   public FateValue visitAssignment(final FateParser.AssignmentContext ctx) {
-    final List<TerminalNode> identifiers = new ArrayList<>();
+    final List<FateParser.AssignableContext> assignables = new ArrayList<>();
 
-    if(ctx.IDENTIFIER() != null) {
-      identifiers.add(ctx.IDENTIFIER());
-    } else if(ctx.identifier_list() != null) {
-      identifiers.addAll(ctx.identifier_list().IDENTIFIER());
+    if(ctx.assignable() != null) {
+      assignables.add(ctx.assignable());
+    } else if(ctx.assignable_list() != null) {
+      assignables.addAll(ctx.assignable_list().assignable());
     }
 
-    final List<FateVariable> vars = new ArrayList<>();
+    final List<FateValue> vars = new ArrayList<>();
 
-    for(final TerminalNode identifier : identifiers) {
-      vars.add(this.getVar(ctx, identifier));
+    for(final FateParser.AssignableContext assignable : assignables) {
+      vars.add(this.visitAssignable(assignable));
     }
 
     this.emitAssignment(ctx.expression(), vars);
@@ -178,7 +201,7 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
       identifiers.addAll(ctx.identifier_list().IDENTIFIER());
     }
 
-    final List<FateVariable> vars = new ArrayList<>();
+    final List<FateValue> vars = new ArrayList<>();
 
     for(final TerminalNode identifier : identifiers) {
       final String name = identifier.getText();
@@ -194,11 +217,11 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
     return null;
   }
 
-  private void emitAssignment(final FateParser.ExpressionContext ctx, final List<FateVariable> vars) {
+  private void emitAssignment(final FateParser.ExpressionContext ctx, final List<FateValue> vars) {
     final FateValue expr = this.visitExpression(ctx);
 
     for(int i = 0; i < vars.size(); i++) {
-      final FateVariable var = vars.get(i);
+      final FateValue var = vars.get(i);
 
       final FateValue src;
       if(expr instanceof final FateValueList list) {
@@ -269,12 +292,12 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
   }
 
   @Override
-  public FateValue visitExpression_list(final FateParser.Expression_listContext ctx) {
+  public FateValue visitAssignable_list(final FateParser.Assignable_listContext ctx) {
     return this.visitChildren(ctx);
   }
 
   @Override
-  public FateValue visitValue_list(final FateParser.Value_listContext ctx) {
+  public FateValue visitExpression_list(final FateParser.Expression_listContext ctx) {
     return this.visitChildren(ctx);
   }
 
@@ -287,8 +310,8 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
 
     // Values
     if(ctx.value() != null) {
-      if(ctx.value().IDENTIFIER() != null) {
-        return this.getVar(ctx, ctx.value().IDENTIFIER());
+      if(ctx.value().assignable() != null) {
+        return this.visitAssignable(ctx.value().assignable());
       }
 
       if(ctx.value().NUMBER() != null) {
@@ -308,6 +331,8 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
 
         return returns.values.isEmpty() ? null : returns.values.size() == 1 ? returns.values.getFirst() : returns;
       }
+
+      this.errors.add(ctx.getStart().getLine() + ": unimplemented value " + ctx.getText());
     }
 
     // Simple unary
@@ -531,6 +556,38 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
 
   @Override
   public FateValue visitValue(final FateParser.ValueContext ctx) {
+    return this.visitChildren(ctx);
+  }
+
+  @Override
+  public FateValue visitAssignable(final FateParser.AssignableContext ctx) {
+    if(ctx.IDENTIFIER() != null) {
+      return this.getVar(ctx, ctx.IDENTIFIER());
+    }
+
+    if(ctx.stor() != null) {
+      return new FateStor(Integer.parseInt(ctx.stor().NUMBER().getText()));
+    }
+
+    if(ctx.gamevar() != null) {
+      if(ctx.gamevar().NUMBER(1) != null) {
+        return new FateGameVarArray(Integer.parseInt(ctx.gamevar().NUMBER(0).getText()), Integer.parseInt(ctx.gamevar().NUMBER(1).getText()));
+      }
+
+      return new FateGameVar(Integer.parseInt(ctx.gamevar().NUMBER(0).getText()));
+    }
+
+    this.errors.add(ctx.getStart().getLine() + ": unknown assignable " + ctx.getText());
+    return null;
+  }
+
+  @Override
+  public FateValue visitStor(final FateParser.StorContext ctx) {
+    return this.visitChildren(ctx);
+  }
+
+  @Override
+  public FateValue visitGamevar(final FateParser.GamevarContext ctx) {
     return this.visitChildren(ctx);
   }
 
