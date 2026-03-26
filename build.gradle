@@ -2,6 +2,8 @@ plugins {
   id 'java'
   id 'maven-publish'
   id 'signing'
+  id 'antlr'
+  id 'idea'
 }
 
 group 'org.legendofdragoon'
@@ -26,6 +28,33 @@ dependencies {
   implementation group: 'com.opencsv', name: 'opencsv', version: '5.9'
   implementation group: 'commons-cli', name: 'commons-cli', version: '1.6.0'
   implementation group: 'io.github.java-diff-utils', name: 'java-diff-utils', version: '4.12'
+
+  antlr "org.antlr:antlr4:4.13.2"
+}
+
+generateGrammarSource {
+//  maxHeapSize = "128m"
+  arguments += ['-package', 'org.legendofdragoon.scripting.compiler', '-visitor', '-no-listener']
+}
+
+compileJava.dependsOn generateGrammarSource
+
+sourceSets {
+  generated {
+    java.srcDir 'generated-src/antlr/main/'
+  }
+}
+
+compileJava.source sourceSets.generated.java, sourceSets.main.java
+
+clean{
+  delete "generated-src"
+}
+
+idea {
+  module {
+    sourceDirs += file("generated-src/antlr/main/")
+  }
 }
 
 tasks.register('sourceJar', Jar) {

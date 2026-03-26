@@ -69,6 +69,11 @@ public enum OpType {
   NOOP_97(97, "debug97"),
   NOOP_98(98, "debug98", OpParam.in("?")),
   DEPTH(99, "depth", OpParam.out("dest")),
+
+  NOOP(100, "noop"),
+  PUSH(101, "push", OpParam.in("val")),
+  POP(102, "pop", OpParam.out("val")),
+  CMP(103, "cmp", "comparator", OpParam.in("left"), OpParam.in("right"), OpParam.out("out"))
   ;
 
   static {

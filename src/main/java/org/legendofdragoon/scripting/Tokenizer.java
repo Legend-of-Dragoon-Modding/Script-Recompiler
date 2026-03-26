@@ -345,7 +345,7 @@ public class Tokenizer {
     } catch(final NumberFormatException ignored) { }
 
     Matcher matcher;
-    if(paramIndex == -1 && (opType == OpType.WAIT_CMP || opType == OpType.WAIT_CMP_0 || opType == OpType.JMP_CMP || opType == OpType.JMP_CMP_0) && (matcher = OPERATOR_PATTERN.matcher(paramString)).matches()) {
+    if(paramIndex == -1 && (opType == OpType.WAIT_CMP || opType == OpType.WAIT_CMP_0 || opType == OpType.JMP_CMP || opType == OpType.JMP_CMP_0 || opType == OpType.CMP) && (matcher = OPERATOR_PATTERN.matcher(paramString)).matches()) {
       final int operatorIndex = switch(matcher.group(1)) {
         case "<=" -> 0;
         case "<" -> 1;

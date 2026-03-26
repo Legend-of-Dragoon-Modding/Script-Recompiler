@@ -398,7 +398,7 @@ public final class Shell {
     Files.writeString(outputFile, output, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
   }
 
-  private static byte[] intsToBytes(final int[] ints) {
+  public static byte[] intsToBytes(final int[] ints) {
     final ByteBuffer buffer = ByteBuffer.allocate(ints.length * 0x4).order(ByteOrder.LITTLE_ENDIAN);
     buffer.asIntBuffer().put(ints);
     return buffer.array();
