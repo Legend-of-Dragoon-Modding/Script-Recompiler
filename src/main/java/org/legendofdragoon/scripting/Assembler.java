@@ -11,8 +11,8 @@ import org.legendofdragoon.scripting.tokens.Param;
 import org.legendofdragoon.scripting.tokens.PointerTable;
 import org.legendofdragoon.scripting.tokens.Script;
 
-public class Compiler {
-  private static final Logger LOGGER = LogManager.getFormatterLogger(Compiler.class);
+public class Assembler {
+  private static final Logger LOGGER = LogManager.getFormatterLogger(Assembler.class);
 
   public int[] compile(final Script script) {
     final int[] out = new int[script.entries.length];

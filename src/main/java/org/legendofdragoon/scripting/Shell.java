@@ -11,6 +11,7 @@ import org.apache.commons.cli.ParseException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.config.plugins.util.PluginManager;
+import org.legendofdragoon.scripting.compiler.FateCompiler;
 import org.legendofdragoon.scripting.meta.Meta;
 import org.legendofdragoon.scripting.meta.MetaManager;
 import org.legendofdragoon.scripting.meta.NoSuchVersionException;
@@ -186,21 +187,42 @@ public final class Shell {
       case "c", "compile" -> {
         LOGGER.info("Compiling %s...", inputFile);
 
+        final String source = Files.readString(inputFile);
+        final List<String> errors = new ArrayList<>();
+
+        final FateCompiler compiler = new FateCompiler();
+        final String compiled = compiler.compile(source, errors);
+
+        if(!errors.isEmpty()) {
+          LOGGER.error("There were errors during compilation:");
+
+          for(final String error : errors) {
+            LOGGER.error(error);
+          }
+        }
+
+        Files.createDirectories(outputFile.getParent());
+        Files.writeString(outputFile, compiled, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+      }
+
+      case "a", "assemble" -> {
+        LOGGER.info("Assembling %s...", inputFile);
+
         final List<Path> includeDirs = readIncludeDirs(cmd.getOptionValues("libs"));
 
-        final Compiler compiler = new Compiler();
+        final Assembler assembler = new Assembler();
         final Tokenizer tokenizer = new Tokenizer(meta);
 
         final String input = Files.readString(inputFile);
         final Script tokenizedDecompiledSource = tokenizer.tokenize(inputFile.toString(), includeDirs, input);
-        final int[] recompiledSource = compiler.compile(tokenizedDecompiledSource);
+        final int[] recompiledSource = assembler.compile(tokenizedDecompiledSource);
 
         Files.createDirectories(outputFile.getParent());
         Files.write(outputFile, intsToBytes(recompiledSource), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
       }
 
       default -> {
-        LOGGER.info("Commands: [v]ersions, [d]ecompile, [c]ompile, [g]enpatch, [a]pplypatch, [u]ndopatch");
+        LOGGER.info("Commands: [v]ersions, [d]ecompile, [c]ompile, [a]ssemble, [g]enpatch, [a]pplypatch, [u]ndopatch");
         System.exit(1);
       }
     }
