@@ -1,6 +1,7 @@
 package org.legendofdragoon.scripting.compiler;
 
 import org.antlr.v4.runtime.tree.TerminalNode;
+import org.legendofdragoon.scripting.OpType;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,6 +23,10 @@ public class FatePreprocessor extends FateBaseVisitor<Void> {
 
     if(ctx.block().statement().getLast().return_() == null) {
       this.errors.add(ctx.getStart().getLine() + ": function \"" + name + "\" missing return");
+    }
+
+    if(OpType.byName(name) != null) {
+      this.errors.add(ctx.getStart().getLine() + ": function \"" + name + "\" is not a legal name");
     }
 
     final List<String> params = new ArrayList<>();

@@ -242,13 +242,42 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
       return null;
     }
 
+    final String name = ctx.IDENTIFIER(0).getText();
+    final OpType opType = OpType.byName(name);
+
+    if(opType != null) {
+      if(ctx.expression_list().expression().size() != opType.params.length) {
+        this.errors.add(ctx.getStart().getLine() + ": expected " + opType.params.length + " params, got " + ctx.expression_list().expression().size());
+      }
+
+      final FateValue[] params = ctx.expression_list().expression().stream()
+        .map(this::visitExpression)
+        .toArray(FateValue[]::new);
+
+      if(opType == OpType.WAIT && params[0] instanceof FateImmediate) {
+        // WAIT will decrement the value. If it's an inl, that value will still be 0 the next time the function is run. This
+        // special-case handling copies the value first, to avoid this behaviour.
+        final FateValue newVal = this.getExprVar();
+        this.fate.addOp(new FateOp(OpType.MOV, params[0], newVal));
+        params[0] = newVal;
+      }
+
+      this.fate.addOp(new FateOp(opType, params));
+      return null;
+    }
+
+    final FateFunctionDefinition def = this.functions.get(name);
+
+    if(ctx.expression_list() == null && !def.params.isEmpty() || ctx.expression_list().expression().size() != def.params.size()) {
+      this.errors.add(ctx.getStart().getLine() + ": expected " + def.params.size() + " params, got " + ctx.expression_list().expression().size());
+    }
+
     // Push params
     for(final FateParser.ExpressionContext exprCtx : ctx.expression_list().expression()) {
       final FateValue value = this.visitExpression(exprCtx);
       this.fate.addOp(new FateOp(OpType.PUSH, value));
     }
 
-    final String name = ctx.IDENTIFIER(0).getText();
     final FateFunctionRef ret = new FateFunctionRef(name);
     this.fate.addOp(new FateOp(OpType.GOSUB, ret));
     return ret;
@@ -320,6 +349,12 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
 
       if(ctx.value().call() != null) {
         final FateFunctionRef ret = this.visitCall(ctx.value().call());
+
+        if(ret == null) {
+          this.errors.add(ctx.getStart().getLine() + ": ASM ops cannot be used in expressions");
+          return new FateImmediate("0");
+        }
+
         final FateFunctionDefinition def = this.functions.get(ret.name);
         final FateValueList returns = new FateValueList();
 

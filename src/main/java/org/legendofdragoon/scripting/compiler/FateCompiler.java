@@ -93,6 +93,7 @@ public class FateCompiler {
         stor[10] = var[8];
       }
     
+      wait(10);
       var (a, b, c, d) = returnMultipleValues();
       (a, b, c, d) = returnMultipleValues();
       return;
