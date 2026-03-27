@@ -1,9 +1,9 @@
 package org.legendofdragoon.scripting.compiler;
 
 public class FateGameVar extends FateValue {
-  public final int index;
+  public final FateValue index;
 
-  public FateGameVar(final int index) {
+  public FateGameVar(final FateValue index) {
     this.index = index;
   }
 

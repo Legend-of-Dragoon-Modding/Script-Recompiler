@@ -78,6 +78,16 @@ public class Script {
     return this.labelCount;
   }
 
+  public int findLabelAddress(final String label) {
+    final var opt = this.labels.entrySet().stream().filter(entry -> entry.getValue().contains(label)).findFirst();
+
+    if(opt.isEmpty()) {
+      throw new RuntimeException("Couldn't find label destination " + label);
+    }
+
+    return opt.get().getKey();
+  }
+
   /**
    * @return The top of the register stack
    */

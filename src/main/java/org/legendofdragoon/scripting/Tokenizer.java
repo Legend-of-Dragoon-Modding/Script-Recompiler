@@ -35,6 +35,7 @@ public class Tokenizer {
 
   public static final String NUMBER_SUBPATTERN = "0x[a-f\\d]{1,8}|\\d{1,10}";
   public static final String ID_SUBPATTERN = ".*?:.*?";
+  public static final String INL_SUBPATTERN = "inl\\[:(\\w+)\\]";
   public static final Pattern LINE_PATTERN = Pattern.compile("^\\s*?(?:[a-f0-9]+\\s+)?([a-z]\\w*?)(?:\\s+(.+))?$", Pattern.CASE_INSENSITIVE);
   public static final Pattern NUMBER_PATTERN = Pattern.compile("^-?(?:" + NUMBER_SUBPATTERN + ")$", Pattern.CASE_INSENSITIVE);
   public static final Pattern LABEL_PATTERN = Pattern.compile("^(\\w+):$", Pattern.CASE_INSENSITIVE);
@@ -66,6 +67,8 @@ public class Tokenizer {
   public static final Pattern REG_PATTERN = Pattern.compile("^reg\\s*?\\[\\s*?(" + NUMBER_SUBPATTERN + ")\\s*?]$", Pattern.CASE_INSENSITIVE);
   public static final Pattern REG_VAR_PATTERN = Pattern.compile("^reg\\s*?\\[\\s*?stor\\[\\s*?(" + NUMBER_SUBPATTERN + ")\\s*?]\\s*?]$", Pattern.CASE_INSENSITIVE);
   public static final Pattern ID_PATTERN = Pattern.compile("^id\\s*?\\[\\s*?(" + ID_SUBPATTERN + ")\\s*?]$", Pattern.CASE_INSENSITIVE);
+  public static final Pattern INLINE_STORAGE_PATTERN = Pattern.compile("^stor\\s*?\\[\\s*?(?:" + INL_SUBPATTERN + "\\s*?,)?\\s*?" + INL_SUBPATTERN + "\\s*?]$", Pattern.CASE_INSENSITIVE);
+  public static final Pattern INLINE_VAR_PATTERN = Pattern.compile("^var\\s*?\\[\\s*?" + INL_SUBPATTERN + "\\s*?]\\s*?(?:\\[\\s*?" + INL_SUBPATTERN + "\\s*?])?$", Pattern.CASE_INSENSITIVE);
 
   private final Meta meta;
 
@@ -559,6 +562,26 @@ public class Tokenizer {
 
     if("null".equalsIgnoreCase(paramString)) {
       return new Param(address, ParameterType.REG_NULL, new int[] { this.packParam(ParameterType.REG_NULL) }, ResolvedValue.of(0), null);
+    }
+
+    if((matcher = INLINE_STORAGE_PATTERN.matcher(paramString)).matches()) {
+      // other script
+      if(matcher.group(1) != null) {
+        return new Param(address, ParameterType.STOR_INL_2, new int[] { this.packParam(ParameterType.STOR_INL_2), 0, 0 }, ResolvedValue.unresolved(), null, new String[] { matcher.group(1), matcher.group(2) });
+      }
+
+      // regular stor
+      return new Param(address, ParameterType.STOR_INL_1, new int[] { this.packParam(ParameterType.STOR_INL_1), 0 }, ResolvedValue.unresolved(), null, new String[] { matcher.group(2) });
+    }
+
+    if((matcher = INLINE_VAR_PATTERN.matcher(paramString)).matches()) {
+      // array var
+      if(matcher.group(2) != null) {
+        return new Param(address, ParameterType.GAMEVAR_INL_2, new int[] { this.packParam(ParameterType.GAMEVAR_INL_2), 0, 0 }, ResolvedValue.unresolved(), null, new String[] { matcher.group(1), matcher.group(2) });
+      }
+
+      // regular var
+      return new Param(address, ParameterType.GAMEVAR_INL_1, new int[] { this.packParam(ParameterType.GAMEVAR_INL_1), 0 }, ResolvedValue.unresolved(), null, new String[] { matcher.group(1) });
     }
 
     throw new RuntimeException("Unknown param " + paramString);

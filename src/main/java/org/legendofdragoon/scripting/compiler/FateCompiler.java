@@ -3,12 +3,19 @@ package org.legendofdragoon.scripting.compiler;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
+import org.legendofdragoon.scripting.meta.Meta;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class FateCompiler {
+  public FateCompiler(final Meta meta) {
+    this.meta = meta;
+  }
+
+  private final Meta meta;
+
   public String compile(final String source, final List<String> errors) {
     final FateLexer lexer = new FateLexer(CharStreams.fromString(source));
     final CommonTokenStream tokens = new CommonTokenStream(lexer);
@@ -21,7 +28,7 @@ public class FateCompiler {
     preprocessor.visit(tree);
 
     final FateContext fate = new FateContext();
-    final FateCompilerVisitor visitor = new FateCompilerVisitor(fate, errors, functions);
+    final FateCompilerVisitor visitor = new FateCompilerVisitor(this.meta, fate, errors, functions);
     visitor.visit(tree);
 
     fate.updateVariableNames();

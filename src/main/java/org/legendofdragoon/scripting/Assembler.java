@@ -14,7 +14,7 @@ import org.legendofdragoon.scripting.tokens.Script;
 public class Assembler {
   private static final Logger LOGGER = LogManager.getFormatterLogger(Assembler.class);
 
-  public int[] compile(final Script script) {
+  public int[] assemble(final Script script) {
     final int[] out = new int[script.entries.length];
 
     for(int entryIndex = 0; entryIndex < script.entries.length; entryIndex++) {
@@ -44,7 +44,7 @@ public class Assembler {
         }
 
         for(final String label : rel.labels) {
-          final int destAddress = this.findLabelAddress(script, label);
+          final int destAddress = script.findLabelAddress(label);
           out[entryIndex++] = (destAddress - rel.address) / 0x4;
         }
 
@@ -53,6 +53,8 @@ public class Assembler {
         out[entryIndex] = op.type.opcode | op.params.length << 8 | op.headerParam << 16;
 
         for(final Param param : op.params) {
+          param.resolveLabels(script);
+
           for(int i = 0; i < param.type.getWidth(param); i++) {
             out[++entryIndex] = param.rawValues[i];
           }
@@ -66,16 +68,6 @@ public class Assembler {
   }
 
   private int findEntrypointAddress(final Script script, final Entrypoint entrypoint) {
-    return this.findLabelAddress(script, entrypoint.destination);
-  }
-
-  private int findLabelAddress(final Script script, final String label) {
-    final var opt = script.labels.entrySet().stream().filter(entry -> entry.getValue().contains(label)).findFirst();
-
-    if(opt.isEmpty()) {
-      throw new RuntimeException("Couldn't find label destination " + label);
-    }
-
-    return opt.get().getKey();
+    return script.findLabelAddress(entrypoint.destination);
   }
 }

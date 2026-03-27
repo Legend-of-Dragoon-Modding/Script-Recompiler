@@ -264,6 +264,8 @@ public class Translator {
       }
       case REG_NULL -> "null";
       case REG_VAR -> "reg[stor[%d]]".formatted(param.rawValues[0] & 0xff);
+
+      case STOR_INL_1, STOR_INL_2, GAMEVAR_INL_1, GAMEVAR_INL_2 -> throw new RuntimeException(param.type + " not yet implemented");
     };
   }
 

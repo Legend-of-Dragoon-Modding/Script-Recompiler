@@ -190,7 +190,7 @@ public final class Shell {
         final String source = Files.readString(inputFile);
         final List<String> errors = new ArrayList<>();
 
-        final FateCompiler compiler = new FateCompiler();
+        final FateCompiler compiler = new FateCompiler(meta);
         final String compiled = compiler.compile(source, errors);
 
         if(!errors.isEmpty()) {
@@ -215,7 +215,7 @@ public final class Shell {
 
         final String input = Files.readString(inputFile);
         final Script tokenizedDecompiledSource = tokenizer.tokenize(inputFile.toString(), includeDirs, input);
-        final int[] recompiledSource = assembler.compile(tokenizedDecompiledSource);
+        final int[] recompiledSource = assembler.assemble(tokenizedDecompiledSource);
 
         Files.createDirectories(outputFile.getParent());
         Files.write(outputFile, intsToBytes(recompiledSource), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);

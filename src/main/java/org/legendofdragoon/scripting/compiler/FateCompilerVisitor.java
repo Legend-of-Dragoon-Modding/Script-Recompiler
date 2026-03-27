@@ -4,6 +4,7 @@ import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.AbstractParseTreeVisitor;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.legendofdragoon.scripting.OpType;
+import org.legendofdragoon.scripting.meta.Meta;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,11 +14,13 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
   private final List<String> errors;
   private final Map<String, FateFunctionDefinition> functions;
 
+  private final Meta meta;
   private final FateContext fate;
   private int labelIndex;
   private int exprVarIndex;
 
-  public FateCompilerVisitor(final FateContext fate, final List<String> errors, final Map<String, FateFunctionDefinition> functions) {
+  public FateCompilerVisitor(final Meta meta, final FateContext fate, final List<String> errors, final Map<String, FateFunctionDefinition> functions) {
+    this.meta = meta;
     this.fate = fate;
     this.errors = errors;
     this.functions = functions;
@@ -236,15 +239,10 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
 
   @Override
   public FateFunctionRef visitCall(final FateParser.CallContext ctx) {
-    if(ctx.SCOPE() != null) {
-      //TODO
-      System.out.println("TODO IMPLEMENT ENGINE CALL " + ctx.getText());
-      return null;
-    }
-
-    final String name = ctx.IDENTIFIER(0).getText();
+    String name = ctx.IDENTIFIER(0).getText();
     final OpType opType = OpType.byName(name);
 
+    // ASM op
     if(opType != null) {
       if(ctx.expression_list().expression().size() != opType.params.length) {
         this.errors.add(ctx.getStart().getLine() + ": expected " + opType.params.length + " params, got " + ctx.expression_list().expression().size());
@@ -266,6 +264,41 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
       return null;
     }
 
+    // Engine call
+    if(ctx.SCOPE() != null) {
+      name += "::" + ctx.IDENTIFIER(1);
+
+      Meta.ScriptMethod def = null;
+      int methodIndex;
+
+      for(methodIndex = 0; methodIndex < this.meta.methods.length; methodIndex++) {
+        if(this.meta.methods[methodIndex].name.equalsIgnoreCase(name)) {
+          def = this.meta.methods[methodIndex];
+          break;
+        }
+      }
+
+      if(def == null) {
+        this.errors.add(ctx.getStart().getLine() + ": unknown engine call " + name);
+        return null;
+      }
+
+      if(ctx.expression_list() == null && def.params.length != 0 || ctx.expression_list().expression().size() != def.params.length) {
+        this.errors.add(ctx.getStart().getLine() + ": expected " + def.params.length + " params, got " + ctx.expression_list().expression().size());
+      }
+
+      final FateValue[] params = new FateValue[ctx.expression_list().expression().size() + 1];
+      params[0] = new FateImmediate(def.name);
+
+      for(int i = 0; i < ctx.expression_list().expression().size(); i++) {
+        params[i + 1] = this.visitExpression(ctx.expression_list().expression().get(i));
+      }
+
+      this.fate.addOp(new FateOp(OpType.CALL, params));
+      return null;
+    }
+
+    // Function call
     final FateFunctionDefinition def = this.functions.get(name);
 
     if(ctx.expression_list() == null && !def.params.isEmpty() || ctx.expression_list().expression().size() != def.params.size()) {
@@ -351,7 +384,7 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
         final FateFunctionRef ret = this.visitCall(ctx.value().call());
 
         if(ret == null) {
-          this.errors.add(ctx.getStart().getLine() + ": ASM ops cannot be used in expressions");
+          this.errors.add(ctx.getStart().getLine() + ": ASM ops and engine calls cannot be used in expressions");
           return new FateImmediate("0");
         }
 
@@ -594,6 +627,16 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
     return this.visitChildren(ctx);
   }
 
+  private FateValue valueToVariable(final FateValue oldVal) {
+    if(oldVal instanceof FateVariable) {
+      return oldVal;
+    }
+
+    final FateValue newVal = this.getExprVar();
+    this.fate.addOp(new FateOp(OpType.MOV, oldVal, newVal));
+    return newVal;
+  }
+
   @Override
   public FateValue visitAssignable(final FateParser.AssignableContext ctx) {
     if(ctx.IDENTIFIER() != null) {
@@ -601,15 +644,25 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
     }
 
     if(ctx.stor() != null) {
-      return new FateStor(Integer.parseInt(ctx.stor().NUMBER().getText()));
+      if(ctx.stor().expression(1) == null) {
+        final FateValue storIndex = this.visitExpression(ctx.stor().expression(0));
+        return new FateStor(null, this.valueToVariable(storIndex));
+      }
+
+      final FateValue scriptIndex = this.visitExpression(ctx.stor().expression(0));
+      final FateValue storIndex = this.visitExpression(ctx.stor().expression(1));
+      return new FateStor(this.valueToVariable(scriptIndex), this.valueToVariable(storIndex));
     }
 
     if(ctx.gamevar() != null) {
-      if(ctx.gamevar().NUMBER(1) != null) {
-        return new FateGameVarArray(Integer.parseInt(ctx.gamevar().NUMBER(0).getText()), Integer.parseInt(ctx.gamevar().NUMBER(1).getText()));
+      final FateValue index1 = this.visitExpression(ctx.gamevar().expression(0));
+
+      if(ctx.gamevar().expression(1) != null) {
+        final FateValue index2 = this.visitExpression(ctx.gamevar().expression(1));
+        return new FateGameVarArray(this.valueToVariable(index1), this.valueToVariable(index2));
       }
 
-      return new FateGameVar(Integer.parseInt(ctx.gamevar().NUMBER(0).getText()));
+      return new FateGameVar(this.valueToVariable(index1));
     }
 
     this.errors.add(ctx.getStart().getLine() + ": unknown assignable " + ctx.getText());

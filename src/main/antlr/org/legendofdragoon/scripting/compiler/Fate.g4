@@ -39,8 +39,8 @@ expression :
 
 value : NUMBER | call | assignable ;
 assignable : IDENTIFIER | stor | gamevar ;
-stor : STOR LBRACKET NUMBER RBRACKET ;
-gamevar : VAR LBRACKET NUMBER RBRACKET (LBRACKET NUMBER RBRACKET)? ;
+stor : STOR LBRACKET (expression COMMA)? expression RBRACKET ;
+gamevar : VAR LBRACKET expression RBRACKET (LBRACKET expression RBRACKET)? ;
 
 postfix_op : INCR | DECR ;
 comp_op : EQ | NEQ | GT | LT | GTE | LTE | ANDC | ORC ;
