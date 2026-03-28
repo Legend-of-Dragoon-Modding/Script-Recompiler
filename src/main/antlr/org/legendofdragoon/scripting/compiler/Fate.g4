@@ -4,7 +4,7 @@ grammar Fate ;
  * Parser Rules
  */
 
-body : entrypoint+ function+ ;
+body : (entrypoint | function)* ;
 
 entrypoint : ENTRYPOINT IDENTIFIER TERM ;
 function : DEF IDENTIFIER identifier_list block ;
