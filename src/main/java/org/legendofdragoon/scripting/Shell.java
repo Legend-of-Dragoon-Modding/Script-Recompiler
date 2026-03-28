@@ -191,7 +191,15 @@ public final class Shell {
         final List<String> errors = new ArrayList<>();
 
         final FateCompiler compiler = new FateCompiler(meta);
-        final String compiled = compiler.compile(source, errors);
+        final String compiled;
+
+        try {
+          compiled = compiler.compile(source, errors);
+          Files.createDirectories(outputFile.getParent());
+          Files.writeString(outputFile, compiled, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+        } catch(final Throwable t) {
+          LOGGER.error("Failed to compile: ", t);
+        }
 
         if(!errors.isEmpty()) {
           LOGGER.error("There were errors during compilation:");
@@ -200,9 +208,6 @@ public final class Shell {
             LOGGER.error(error);
           }
         }
-
-        Files.createDirectories(outputFile.getParent());
-        Files.writeString(outputFile, compiled, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
       }
 
       case "a", "assemble" -> {
