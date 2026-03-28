@@ -43,8 +43,8 @@ public class FatePreprocessor extends FateBaseVisitor<Void> {
   }
 
   @Override
-  public Void visitReturn(final FateParser.ReturnContext ctx) {
+  public Void visitReturn_(final FateParser.Return_Context ctx) {
     this.returnCount = ctx.expression() != null ? 1 : ctx.expression_list() != null ? ctx.expression_list().expression().size() : 0;
-    return super.visitReturn(ctx);
+    return super.visitChildren(ctx);
   }
 }

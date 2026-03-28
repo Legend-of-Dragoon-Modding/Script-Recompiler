@@ -96,7 +96,7 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
   }
 
   @Override
-  public FateValue visitIf(final FateParser.IfContext ctx) {
+  public FateValue visitIf_(final FateParser.If_Context ctx) {
     final FateValue expr = this.visitExpression(ctx.expression());
 
     final String label = this.getLabel();
@@ -114,7 +114,7 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
 
     // else if
     if(ctx.if_() != null) {
-      this.visitIf(ctx.if_());
+      this.visitIf_(ctx.if_());
     }
 
     // else
@@ -130,7 +130,7 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
   }
 
   @Override
-  public FateValue visitWhile(final FateParser.WhileContext ctx) {
+  public FateValue visitWhile_(final FateParser.While_Context ctx) {
     final String label1 = this.getLabel();
     final String label2 = this.getLabel();
 
@@ -317,7 +317,7 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
   }
 
   @Override
-  public FateValue visitReturn(final FateParser.ReturnContext ctx) {
+  public FateValue visitReturn_(final FateParser.Return_Context ctx) {
     final List<FateValue> returns = new ArrayList<>();
 
     if(ctx.expression_list() != null) {

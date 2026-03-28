@@ -12,7 +12,7 @@ public class FateFunction extends FateOp {
   public final FateScope scope;
   public final String name;
   private final List<FateVariable> variables = new ArrayList<>();
-  private final Map<FateParser.ReturnContext, List<FateValue>> returns = new HashMap<>();
+  private final Map<FateParser.Return_Context, List<FateValue>> returns = new HashMap<>();
   private int returnCount;
 
   public FateFunction(final FateScope scope, final String name) {
@@ -36,16 +36,16 @@ public class FateFunction extends FateOp {
     }
   }
 
-  public void addReturn(final FateParser.ReturnContext ctx, final List<FateValue> values) {
+  public void addReturn(final FateParser.Return_Context ctx, final List<FateValue> values) {
     this.returns.put(ctx, values);
     this.returnCount = values.size();
   }
 
-  public Set<FateParser.ReturnContext> getReturns() {
+  public Set<FateParser.Return_Context> getReturns() {
     return this.returns.keySet();
   }
 
-  public List<FateValue> getReturnValues(final FateParser.ReturnContext ctx) {
+  public List<FateValue> getReturnValues(final FateParser.Return_Context ctx) {
     return this.returns.get(ctx);
   }
 

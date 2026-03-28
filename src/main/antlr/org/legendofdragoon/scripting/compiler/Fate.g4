@@ -9,19 +9,19 @@ body : (entrypoint | function)* ;
 entrypoint : ENTRYPOINT IDENTIFIER TERM ;
 function : DEF IDENTIFIER identifier_list block ;
 
-if : IF LPAREN expression RPAREN block (ELSE if | ELSE block)? ;
-while : WHILE LPAREN expression RPAREN block ;
-control : if | while ;
+if_ : IF LPAREN expression RPAREN block (ELSE if_ | ELSE block)? ;
+while_ : WHILE LPAREN expression RPAREN block ;
+control : if_ | while_ ;
 
 block : OPENER (statement | control)* CLOSER ;
 
-statement : (declaration | assignment | postfix | call | return) TERM ;
+statement : (declaration | assignment | postfix | call | return_) TERM ;
 postfix : IDENTIFIER postfix_op ;
 assignment : (assignable | assignable_list) ASSIGN expression ;
 declaration : VAR (IDENTIFIER | identifier_list) (ASSIGN expression)? ;
 
 call : IDENTIFIER (SCOPE IDENTIFIER)? expression_list ;
-return : RETURN (expression | expression_list)? ;
+return_ : RETURN (expression | expression_list)? ;
 
 identifier_list : LPAREN (IDENTIFIER (COMMA IDENTIFIER)*)? RPAREN ;
 assignable_list : LPAREN (assignable (COMMA assignable)*)? RPAREN ;
