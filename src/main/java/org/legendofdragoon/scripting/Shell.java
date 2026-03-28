@@ -70,7 +70,7 @@ public final class Shell {
       return;
     }
 
-    if("a".equals(args[0]) || "applypatch".equals(args[0])) {
+    if("p".equals(args[0]) || "patch".equals(args[0])) {
       applyDiff(args);
       System.exit(0);
       return;
@@ -222,7 +222,7 @@ public final class Shell {
       }
 
       default -> {
-        LOGGER.info("Commands: [v]ersions, [d]ecompile, [c]ompile, [a]ssemble, [g]enpatch, [a]pplypatch, [u]ndopatch");
+        LOGGER.info("Commands: [v]ersions, [d]ecompile, [c]ompile, [a]ssemble, [g]enpatch, [p]atch, [u]ndopatch");
         System.exit(1);
       }
     }
