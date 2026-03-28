@@ -37,6 +37,8 @@ public enum ParameterType {
   STOR_INL_2(0x25, 3),
   GAMEVAR_INL_1(0x26, 2),
   GAMEVAR_INL_2(0x27, 3),
+  REG_INL_1(0x28, 2),
+  REG_INL_2(0x29, 3),
   ;
 
   public static ParameterType byOpcode(final int opcode) {

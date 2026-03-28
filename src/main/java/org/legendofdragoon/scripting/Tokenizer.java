@@ -68,7 +68,8 @@ public class Tokenizer {
   public static final Pattern REG_VAR_PATTERN = Pattern.compile("^reg\\s*?\\[\\s*?stor\\[\\s*?(" + NUMBER_SUBPATTERN + ")\\s*?]\\s*?]$", Pattern.CASE_INSENSITIVE);
   public static final Pattern ID_PATTERN = Pattern.compile("^id\\s*?\\[\\s*?(" + ID_SUBPATTERN + ")\\s*?]$", Pattern.CASE_INSENSITIVE);
   public static final Pattern INLINE_STORAGE_PATTERN = Pattern.compile("^stor\\s*?\\[\\s*?(?:" + INL_SUBPATTERN + "\\s*?,)?\\s*?" + INL_SUBPATTERN + "\\s*?]$", Pattern.CASE_INSENSITIVE);
-  public static final Pattern INLINE_VAR_PATTERN = Pattern.compile("^var\\s*?\\[\\s*?" + INL_SUBPATTERN + "\\s*?]\\s*?(?:\\[\\s*?" + INL_SUBPATTERN + "\\s*?])?$", Pattern.CASE_INSENSITIVE);
+  public static final Pattern INLINE_VAR_PATTERN = Pattern.compile("^var\\s*?\\[\\s*?" + INL_SUBPATTERN + "\\s*?](?:\\s*?\\[\\s*?" + INL_SUBPATTERN + "\\s*?])?$", Pattern.CASE_INSENSITIVE);
+  public static final Pattern INLINE_REG_PATTERN = Pattern.compile("^reg\\s*?\\[\\s*?(?:" + INL_SUBPATTERN + "\\s*?,)?\\s*?" + INL_SUBPATTERN + "\\s*?]$", Pattern.CASE_INSENSITIVE);
 
   private final Meta meta;
 
@@ -582,6 +583,16 @@ public class Tokenizer {
 
       // regular var
       return new Param(address, ParameterType.GAMEVAR_INL_1, new int[] { this.packParam(ParameterType.GAMEVAR_INL_1), 0 }, ResolvedValue.unresolved(), null, new String[] { matcher.group(1) });
+    }
+
+    if((matcher = INLINE_REG_PATTERN.matcher(paramString)).matches()) {
+      // other script
+      if(matcher.group(1) != null) {
+        return new Param(address, ParameterType.REG_INL_2, new int[] { this.packParam(ParameterType.REG_INL_2), 0, 0 }, ResolvedValue.unresolved(), null, new String[] { matcher.group(1), matcher.group(2) });
+      }
+
+      // regular reg
+      return new Param(address, ParameterType.REG_INL_1, new int[] { this.packParam(ParameterType.REG_INL_1), 0 }, ResolvedValue.unresolved(), null, new String[] { matcher.group(2) });
     }
 
     throw new RuntimeException("Unknown param " + paramString);

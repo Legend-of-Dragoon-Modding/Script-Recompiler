@@ -38,10 +38,12 @@ expression :
   expression bit_op expression |
   value ;
 
-value : NUMBER | call | assignable ;
-assignable : IDENTIFIER | stor | gamevar ;
+value : NUMBER | call | assignable | id ;
+assignable : IDENTIFIER | stor | gamevar | reg ;
 stor : STOR LBRACKET (expression COMMA)? expression RBRACKET ;
 gamevar : VAR LBRACKET expression RBRACKET (LBRACKET expression RBRACKET)? ;
+reg : REG LBRACKET expression RBRACKET ;
+id : IDENTIFIER COLON IDENTIFIER ;
 
 postfix_op : INCR | DECR ;
 comp_op : EQ | NEQ | GT | LT | GTE | LTE | ANDC | ORC ;
@@ -105,8 +107,10 @@ CLOSER : '}' ;
 TERM : ';' ;
 
 SCOPE : '::' ;
+COLON : ':' ;
 
 STOR : 'stor' ;
+REG : 'reg' ;
 IDENTIFIER : [a-zA-Z_][a-zA-Z0-9_]* ;
 NUMBER : '-'?([0-9]+|'0x'[a-f0-9]+) ;
 WHITESPACE : [ \n] -> skip ;

@@ -696,6 +696,11 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
       return new FateGameVar(this.valueToVariable(index1));
     }
 
+    if(ctx.reg() != null) {
+      final FateValue index = this.visitExpression(ctx.reg().expression());
+      return new FateReg(index);
+    }
+
     this.errors.add(ctx.getStart().getLine() + ": unknown assignable " + ctx.getText());
     return new FateImmediate("undefined");
   }
@@ -707,6 +712,16 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
 
   @Override
   public FateValue visitGamevar(final FateParser.GamevarContext ctx) {
+    return this.visitChildren(ctx);
+  }
+
+  @Override
+  public FateValue visitReg(final FateParser.RegContext ctx) {
+    return this.visitChildren(ctx);
+  }
+
+  @Override
+  public FateValue visitId(final FateParser.IdContext ctx) {
     return this.visitChildren(ctx);
   }
 
