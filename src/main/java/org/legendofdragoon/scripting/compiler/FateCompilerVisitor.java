@@ -403,12 +403,16 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
         return new FateImmediate(ctx.value().NUMBER().getText());
       }
 
+      if(ctx.value().id() != null) {
+        return new FateRegId(ctx.value().id().getText());
+      }
+
       if(ctx.value().call() != null) {
         final FateFunctionRef ret = this.visitCall(ctx.value().call());
 
         if(ret == null) {
           this.errors.add(ctx.getStart().getLine() + ": ASM ops and engine calls cannot be used in expressions");
-          return new FateImmediate("0");
+          return new FateImmediate("undefined");
         }
 
         final FateFunctionDefinition def = this.functions.get(ret.name);
