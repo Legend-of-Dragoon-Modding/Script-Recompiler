@@ -50,6 +50,9 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
 
   @Override
   public FateValue visitBody(final FateParser.BodyContext ctx) {
+    // Add global scope
+    this.fate.pushScope();
+
     return this.visitChildren(ctx);
   }
 
@@ -220,6 +223,13 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
       this.emitAssignment(ctx.expression(), vars);
     }
 
+    return null;
+  }
+
+  @Override
+  public FateValue visitGlobal(final FateParser.GlobalContext ctx) {
+    final FateVariable var = this.fate.addVariable(ctx.IDENTIFIER().getText());
+    this.fate.addOp(new FateGlobal(var.name, ctx.NUMBER().getText()));
     return null;
   }
 

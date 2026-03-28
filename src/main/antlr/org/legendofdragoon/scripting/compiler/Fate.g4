@@ -4,7 +4,7 @@ grammar Fate ;
  * Parser Rules
  */
 
-body : (entrypoint | function)* ;
+body : (entrypoint | global | function)* ;
 
 entrypoint : ENTRYPOINT IDENTIFIER TERM ;
 function : DEF IDENTIFIER identifier_list block ;
@@ -19,6 +19,7 @@ statement : (declaration | assignment | postfix | call | return_) TERM ;
 postfix : IDENTIFIER postfix_op ;
 assignment : (assignable | assignable_list) ASSIGN expression ;
 declaration : VAR (IDENTIFIER | identifier_list) (ASSIGN expression)? ;
+global : VAR IDENTIFIER ASSIGN NUMBER TERM ;
 
 call : IDENTIFIER (SCOPE IDENTIFIER)? expression_list ;
 return_ : RETURN (expression | expression_list)? ;
