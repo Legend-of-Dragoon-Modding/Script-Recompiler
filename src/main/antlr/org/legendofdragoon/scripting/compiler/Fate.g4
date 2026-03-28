@@ -108,5 +108,5 @@ SCOPE : '::' ;
 
 STOR : 'stor' ;
 IDENTIFIER : [a-zA-Z_][a-zA-Z0-9_]* ;
-NUMBER : [0-9]+ ;
+NUMBER : '-'?([0-9]+|'0x'[a-f0-9]+) ;
 WHITESPACE : [ \n] -> skip ;
