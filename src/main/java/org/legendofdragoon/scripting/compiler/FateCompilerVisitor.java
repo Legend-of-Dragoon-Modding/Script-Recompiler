@@ -26,11 +26,12 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
     this.functions = functions;
   }
 
-  private FateVariable getVar(final ParserRuleContext ctx, final TerminalNode identifier) {
+  private FateValue getVar(final ParserRuleContext ctx, final TerminalNode identifier) {
     final String var = identifier.getText();
 
     if(!this.fate.isVariableInScope(var)) {
       this.errors.add(ctx.getStart().getLine() + ": variable \"" + var + "\" is not defined in the current scope");
+      return new FateImmediate("undefined");
     }
 
     return this.fate.getVariable(var);
@@ -166,7 +167,7 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
 
   @Override
   public FateValue visitPostfix(final FateParser.PostfixContext ctx) {
-    final FateVariable var = this.getVar(ctx, ctx.IDENTIFIER());
+    final FateValue var = this.getVar(ctx, ctx.IDENTIFIER());
 
     if(ctx.postfix_op().INCR() != null) {
       this.fate.addOp(new FateOp(OpType.INCR, var));
@@ -691,7 +692,7 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
     }
 
     this.errors.add(ctx.getStart().getLine() + ": unknown assignable " + ctx.getText());
-    return null;
+    return new FateImmediate("undefined");
   }
 
   @Override
