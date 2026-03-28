@@ -314,8 +314,12 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
     // Function call
     final FateFunctionDefinition def = this.functions.get(name);
 
-    if(ctx.expression_list() == null && !def.params.isEmpty() || ctx.expression_list().expression().size() != def.params.size()) {
-      this.errors.add(ctx.getStart().getLine() + ": expected " + def.params.size() + " params, got " + ctx.expression_list().expression().size());
+    if(def != null) {
+      if(ctx.expression_list() == null && !def.params.isEmpty() || ctx.expression_list().expression().size() != def.params.size()) {
+        this.errors.add(ctx.getStart().getLine() + ": expected " + def.params.size() + " params, got " + ctx.expression_list().expression().size());
+      }
+    } else {
+      this.errors.add(ctx.getStart().getLine() + ": unknown function " + name);
     }
 
     // Push params
