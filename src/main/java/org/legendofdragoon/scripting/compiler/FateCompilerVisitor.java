@@ -54,6 +54,11 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
     // Add global scope
     this.fate.pushScope();
 
+    // Add variables for functions
+    for(final String function : this.functions.keySet()) {
+      this.fate.addVariable(function);
+    }
+
     return this.visitChildren(ctx);
   }
 
