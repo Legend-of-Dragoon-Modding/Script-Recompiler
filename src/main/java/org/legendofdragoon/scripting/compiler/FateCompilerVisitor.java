@@ -216,7 +216,10 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
       vars.add(this.fate.addVariable(name));
     }
 
-    this.emitAssignment(ctx.expression(), vars);
+    if(ctx.expression() != null) {
+      this.emitAssignment(ctx.expression(), vars);
+    }
+
     return null;
   }
 
@@ -640,6 +643,14 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
   @Override
   public FateValue visitAssignable(final FateParser.AssignableContext ctx) {
     if(ctx.IDENTIFIER() != null) {
+      for(final String[] values : this.meta.enums.values()) {
+        for(final String value : values) {
+          if(value.equalsIgnoreCase(ctx.IDENTIFIER().getText())) {
+            return new FateEnum(value);
+          }
+        }
+      }
+
       return this.getVar(ctx, ctx.IDENTIFIER());
     }
 
