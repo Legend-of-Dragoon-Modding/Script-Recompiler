@@ -114,3 +114,7 @@ REG : 'reg' ;
 IDENTIFIER : [a-zA-Z_][a-zA-Z0-9_]* ;
 NUMBER : '-'?([0-9]+|'0x'[a-f0-9]+) ;
 WHITESPACE : [ \n] -> skip ;
+
+LINE_COMMENT : '//' ~[\r\n]* -> skip ;
+BLOCK_COMMENT : '/*' .*? '*/' -> skip ;
+
