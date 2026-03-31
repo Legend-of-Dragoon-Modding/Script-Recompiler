@@ -13,7 +13,11 @@ public class FateScope {
   }
 
   public FateVariable addVariable(final String name) {
-    return this.variables.computeIfAbsent(name, FateVariable::new);
+    return this.addVariable(name, 1);
+  }
+
+  public FateVariable addVariable(final String name, final int length) {
+    return this.variables.computeIfAbsent(name, key -> new FateVariable(key, length));
   }
 
   public FateVariable getVariable(final String name) {

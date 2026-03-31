@@ -33,12 +33,10 @@ public enum ParameterType {
   ID(0x21, param -> 1 + (param.length() + 3) / 4, param -> 1 + ((param.rawValues[0] >>> 16 & 0xff) + 3) / 4, state -> 1 + (state.param2() + 3) / 4),
   REG_NULL(0x22, 1),
   REG_VAR(0x23, 1),
-  STOR_INL_1(0x24, 2),
-  STOR_INL_2(0x25, 3),
-  GAMEVAR_INL_1(0x26, 2),
-  GAMEVAR_INL_2(0x27, 3),
-  REG_INL_1(0x28, 2),
-  REG_INL_2(0x29, 3),
+  STOR_INL(0x24, 2),
+  GAMEVAR_INL(0x25, 2),
+  REG_INL(0x26, 2),
+  INLINE_INL(0x27, 2),
   ;
 
   public static ParameterType byOpcode(final int opcode) {

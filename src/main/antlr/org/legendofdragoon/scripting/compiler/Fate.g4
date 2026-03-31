@@ -17,9 +17,9 @@ block : OPENER (statement | control)* CLOSER ;
 
 statement : (declaration | assignment | postfix | call | return_) TERM ;
 postfix : IDENTIFIER postfix_op ;
-assignment : (assignable | assignable_list) ASSIGN expression ;
-declaration : VAR (IDENTIFIER | identifier_list) (ASSIGN expression)? ;
-global : VAR IDENTIFIER ASSIGN NUMBER TERM ;
+assignment : (assignable | assignable_list) ASSIGN (expression | array_initializer) ;
+declaration : VAR (IDENTIFIER | identifier_list) (ASSIGN (expression | array_initializer))? ;
+global : VAR IDENTIFIER ASSIGN (NUMBER | const_array_initializer) TERM ;
 
 call : IDENTIFIER (SCOPE IDENTIFIER)? expression_list ;
 return_ : RETURN (expression | expression_list)? ;
@@ -38,12 +38,15 @@ expression :
   expression bit_op expression |
   value ;
 
-value : NUMBER | call | assignable | id ;
+value : NUMBER | call | assignable | id | array_lookup ;
 assignable : IDENTIFIER | stor | gamevar | reg ;
 stor : STOR LBRACKET (expression COMMA)? expression RBRACKET ;
 gamevar : VAR LBRACKET expression RBRACKET (LBRACKET expression RBRACKET)? ;
 reg : REG LBRACKET expression RBRACKET ;
 id : IDENTIFIER COLON IDENTIFIER ;
+array_initializer : LBRACKET expression (COMMA expression)* RBRACKET ;
+array_lookup : IDENTIFIER LBRACKET expression RBRACKET ;
+const_array_initializer : LBRACKET NUMBER (COMMA NUMBER)* RBRACKET ;
 
 postfix_op : INCR | DECR ;
 comp_op : EQ | NEQ | GT | LT | GTE | LTE | ANDC | ORC ;

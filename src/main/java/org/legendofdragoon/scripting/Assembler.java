@@ -53,7 +53,7 @@ public class Assembler {
         out[entryIndex] = op.type.opcode | op.params.length << 8 | op.headerParam << 16;
 
         for(final Param param : op.params) {
-          param.resolveLabels(script);
+          param.resolveValues(script);
 
           for(int i = 0; i < param.type.getWidth(param); i++) {
             out[++entryIndex] = param.rawValues[i];

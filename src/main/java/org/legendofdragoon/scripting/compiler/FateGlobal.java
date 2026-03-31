@@ -4,16 +4,22 @@ import org.legendofdragoon.scripting.OpType;
 
 public class FateGlobal extends FateOp {
   private final String name;
-  private final String value;
+  private final String[] values;
 
-  public FateGlobal(final String name, final String value) {
+  public FateGlobal(final String name, final String... values) {
     super(OpType.NOOP);
     this.name = name;
-    this.value = value;
+    this.values = values;
   }
 
   @Override
   public String toString() {
-    return this.name + ":\ndata " + this.value + '\n';
+    final StringBuilder builder = new StringBuilder(this.name).append(":\n");
+
+    for(final String value : this.values) {
+      builder.append("data ").append(value).append('\n');
+    }
+
+    return builder.toString();
   }
 }

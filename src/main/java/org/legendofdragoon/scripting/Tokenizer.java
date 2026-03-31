@@ -35,14 +35,15 @@ public class Tokenizer {
 
   public static final String NUMBER_SUBPATTERN = "0x[a-f\\d]{1,8}|\\d{1,10}";
   public static final String ID_SUBPATTERN = ".*?:.*?";
-  public static final String INL_SUBPATTERN = "inl\\[:(\\w+)\\]";
+  public static final String INL_SUBPATTERN = "inl\\s*?\\[\\s*?:(\\w+)\\s*?]";
+
   public static final Pattern LINE_PATTERN = Pattern.compile("^\\s*?(?:[a-f0-9]+\\s+)?([a-z]\\w*?)(?:\\s+(.+))?$", Pattern.CASE_INSENSITIVE);
   public static final Pattern NUMBER_PATTERN = Pattern.compile("^-?(?:" + NUMBER_SUBPATTERN + ")$", Pattern.CASE_INSENSITIVE);
   public static final Pattern LABEL_PATTERN = Pattern.compile("^(\\w+):$", Pattern.CASE_INSENSITIVE);
   public static final Pattern LABEL_PARAM_PATTERN = Pattern.compile("^:(\\w+)$", Pattern.CASE_INSENSITIVE);
   public static final Pattern CALL_PATTERN = Pattern.compile("^[a-z_]\\w*::[a-z_]\\w*$", Pattern.CASE_INSENSITIVE);
   public static final Pattern STRING_PATTERN = Pattern.compile("^str\\[(.*?)]$", Pattern.CASE_INSENSITIVE);
-  public static final Pattern OPERATOR_PATTERN = Pattern.compile("^(<=|<|==|!=|>|>=|&|!&)$", Pattern.CASE_INSENSITIVE);
+  public static final Pattern OPERATOR_PATTERN = Pattern.compile("^(<=|<|==|!=|>|>=|&|!&|&&|\\|\\|)$", Pattern.CASE_INSENSITIVE);
 
   public static final Pattern STORAGE_PATTERN = Pattern.compile("^stor\\s*?\\[\\s*?(" + NUMBER_SUBPATTERN + ")\\s*?]$", Pattern.CASE_INSENSITIVE);
   public static final Pattern OTHER_OTHER_STORAGE_PATTERN = Pattern.compile("^stor\\s*?\\[\\s*?stor\\s*?\\[\\s*?stor\\s*?\\[\\s*?(" + NUMBER_SUBPATTERN + ")\\s*?]\\s*?,\\s*?(" + NUMBER_SUBPATTERN + ")\\s*?]\\s*?,\\s*?(" + NUMBER_SUBPATTERN + ")\\s*?]$", Pattern.CASE_INSENSITIVE);
@@ -70,6 +71,7 @@ public class Tokenizer {
   public static final Pattern INLINE_STORAGE_PATTERN = Pattern.compile("^stor\\s*?\\[\\s*?(?:" + INL_SUBPATTERN + "\\s*?,)?\\s*?" + INL_SUBPATTERN + "\\s*?]$", Pattern.CASE_INSENSITIVE);
   public static final Pattern INLINE_VAR_PATTERN = Pattern.compile("^var\\s*?\\[\\s*?" + INL_SUBPATTERN + "\\s*?](?:\\s*?\\[\\s*?" + INL_SUBPATTERN + "\\s*?])?$", Pattern.CASE_INSENSITIVE);
   public static final Pattern INLINE_REG_PATTERN = Pattern.compile("^reg\\s*?\\[\\s*?(?:" + INL_SUBPATTERN + "\\s*?,)?\\s*?" + INL_SUBPATTERN + "\\s*?]$", Pattern.CASE_INSENSITIVE);
+  public static final Pattern INLINE_INL_PATTERN = Pattern.compile('^' + INL_SUBPATTERN + "\\s*?\\[" + INL_SUBPATTERN + "]$", Pattern.CASE_INSENSITIVE);
 
   private final Meta meta;
 
@@ -359,6 +361,8 @@ public class Tokenizer {
         case ">=" -> 5;
         case "&" -> 6;
         case "!&" -> 7;
+        case "&&" -> 8;
+        case "||" -> 9;
         default -> throw new RuntimeException("Unknown operator " + matcher.group(1));
       };
 
@@ -566,33 +570,48 @@ public class Tokenizer {
     }
 
     if((matcher = INLINE_STORAGE_PATTERN.matcher(paramString)).matches()) {
+      final String storIndex = matcher.group(2);
+
       // other script
       if(matcher.group(1) != null) {
-        return new Param(address, ParameterType.STOR_INL_2, new int[] { this.packParam(ParameterType.STOR_INL_2), 0, 0 }, ResolvedValue.unresolved(), null, new String[] { matcher.group(1), matcher.group(2) });
+        final String scriptIndex = matcher.group(1);
+        return new Param(address, ParameterType.STOR_INL, new int[] { this.packParam(ParameterType.STOR_INL, 2), 0 }, ResolvedValue.unresolved(), null, (script, values) -> values[1] = script.findLabelAddress(storIndex) / 4 | script.findLabelAddress(scriptIndex) / 4 << 16);
       }
 
       // regular stor
-      return new Param(address, ParameterType.STOR_INL_1, new int[] { this.packParam(ParameterType.STOR_INL_1), 0 }, ResolvedValue.unresolved(), null, new String[] { matcher.group(2) });
+      return new Param(address, ParameterType.STOR_INL, new int[] { this.packParam(ParameterType.STOR_INL, 1), 0 }, ResolvedValue.unresolved(), null, (script, values) -> values[1] = script.findLabelAddress(storIndex) / 4);
     }
 
     if((matcher = INLINE_VAR_PATTERN.matcher(paramString)).matches()) {
+      final String index1 = matcher.group(1);
+
       // array var
       if(matcher.group(2) != null) {
-        return new Param(address, ParameterType.GAMEVAR_INL_2, new int[] { this.packParam(ParameterType.GAMEVAR_INL_2), 0, 0 }, ResolvedValue.unresolved(), null, new String[] { matcher.group(1), matcher.group(2) });
+        final String index2 = matcher.group(2);
+        return new Param(address, ParameterType.GAMEVAR_INL, new int[] { this.packParam(ParameterType.GAMEVAR_INL, 2), 0 }, ResolvedValue.unresolved(), null, (script, values) -> values[1] = script.findLabelAddress(index1) / 4 | script.findLabelAddress(index2) / 4 << 16);
       }
 
       // regular var
-      return new Param(address, ParameterType.GAMEVAR_INL_1, new int[] { this.packParam(ParameterType.GAMEVAR_INL_1), 0 }, ResolvedValue.unresolved(), null, new String[] { matcher.group(1) });
+      return new Param(address, ParameterType.GAMEVAR_INL, new int[] { this.packParam(ParameterType.GAMEVAR_INL, 1), 0 }, ResolvedValue.unresolved(), null, (script, values) -> values[1] = script.findLabelAddress(index1) / 4);
     }
 
     if((matcher = INLINE_REG_PATTERN.matcher(paramString)).matches()) {
+      final String regIndex = matcher.group(2);
+
       // other script
       if(matcher.group(1) != null) {
-        return new Param(address, ParameterType.REG_INL_2, new int[] { this.packParam(ParameterType.REG_INL_2), 0, 0 }, ResolvedValue.unresolved(), null, new String[] { matcher.group(1), matcher.group(2) });
+        final String scriptIndex = matcher.group(1);
+        return new Param(address, ParameterType.REG_INL, new int[] { this.packParam(ParameterType.REG_INL, 2), 0 }, ResolvedValue.unresolved(), null, (script, values) -> values[1] = script.findLabelAddress(regIndex) / 4 | script.findLabelAddress(scriptIndex) / 4 << 16);
       }
 
       // regular reg
-      return new Param(address, ParameterType.REG_INL_1, new int[] { this.packParam(ParameterType.REG_INL_1), 0 }, ResolvedValue.unresolved(), null, new String[] { matcher.group(2) });
+      return new Param(address, ParameterType.REG_INL, new int[] { this.packParam(ParameterType.REG_INL, 1), 0 }, ResolvedValue.unresolved(), null, (script, values) -> values[1] = script.findLabelAddress(regIndex) / 4);
+    }
+
+    if((matcher = INLINE_INL_PATTERN.matcher(paramString)).matches()) {
+      final String index1 = matcher.group(1);
+      final String index2 = matcher.group(2);
+      return new Param(address, ParameterType.INLINE_INL, new int[] { this.packParam(ParameterType.INLINE_INL), 0 }, ResolvedValue.unresolved(), null, (script, values) -> values[1] = script.findLabelAddress(index1) / 4 | script.findLabelAddress(index2) / 4 << 16);
     }
 
     throw new RuntimeException("Unknown param " + paramString);

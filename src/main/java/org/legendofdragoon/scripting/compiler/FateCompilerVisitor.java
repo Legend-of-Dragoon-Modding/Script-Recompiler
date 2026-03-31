@@ -38,7 +38,7 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
   }
 
   private String getLabel() {
-    final String var = "LABEL_" + this.labelIndex;
+    final String var = "_label_" + this.labelIndex;
     this.labelIndex++;
     return var;
   }
@@ -191,15 +191,34 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
       assignables.add(ctx.assignable());
     } else if(ctx.assignable_list() != null) {
       assignables.addAll(ctx.assignable_list().assignable());
+    } else {
+      this.errors.add(ctx.getStart().getLine() + ": unknown assignable type " + ctx.getText());
     }
 
-    final List<FateValue> vars = new ArrayList<>();
+    if(ctx.expression() != null) {
+      final List<FateValue> vars = new ArrayList<>();
 
-    for(final FateParser.AssignableContext assignable : assignables) {
-      vars.add(this.visitAssignable(assignable));
+      for(final FateParser.AssignableContext assignable : assignables) {
+        vars.add(this.visitAssignable(assignable));
+      }
+
+      this.emitAssignment(ctx.expression(), vars);
+    } else if(ctx.array_initializer() != null) {
+      final List<TerminalNode> vars = new ArrayList<>();
+
+      for(final FateParser.AssignableContext assignable : assignables) {
+        if(assignable.IDENTIFIER() != null) {
+          vars.add(assignable.IDENTIFIER());
+        } else {
+          this.errors.add(ctx.getStart().getLine() + ": only regular variables can be used with array initializers");
+        }
+      }
+
+      this.emitArrayAssignment(ctx.array_initializer(), vars);
+    } else {
+      this.errors.add(ctx.getStart().getLine() + ": unknown assignment type " + ctx.getText());
     }
 
-    this.emitAssignment(ctx.expression(), vars);
     return null;
   }
 
@@ -211,31 +230,28 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
       identifiers.add(ctx.IDENTIFIER());
     } else if(ctx.identifier_list() != null) {
       identifiers.addAll(ctx.identifier_list().IDENTIFIER());
-    }
-
-    final List<FateValue> vars = new ArrayList<>();
-
-    for(final TerminalNode identifier : identifiers) {
-      final String name = identifier.getText();
-
-      if(this.fate.isVariableInScope(name)) {
-        this.errors.add(ctx.getStart().getLine() + ": variable " + name + " already defined in scope");
-      }
-
-      vars.add(this.fate.addVariable(name));
+    } else {
+      this.errors.add(ctx.getStart().getLine() + ": unknown declaration type " + ctx.getText());
     }
 
     if(ctx.expression() != null) {
+      final List<FateValue> vars = new ArrayList<>();
+
+      for(final TerminalNode identifier : identifiers) {
+        final String name = identifier.getText();
+
+        if(this.fate.isVariableInScope(name)) {
+          this.errors.add(ctx.getStart().getLine() + ": variable " + name + " already defined in scope");
+        }
+
+        vars.add(this.fate.addVariable(name));
+      }
+
       this.emitAssignment(ctx.expression(), vars);
+    } else if(ctx.array_initializer() != null) {
+      this.emitArrayAssignment(ctx.array_initializer(), identifiers);
     }
 
-    return null;
-  }
-
-  @Override
-  public FateValue visitGlobal(final FateParser.GlobalContext ctx) {
-    final FateVariable var = this.fate.addVariable(ctx.IDENTIFIER().getText());
-    this.fate.addOp(new FateGlobal(var.name, ctx.NUMBER().getText()));
     return null;
   }
 
@@ -254,6 +270,37 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
 
       this.fate.addOp(new FateOp(OpType.MOV, src, var));
     }
+  }
+
+  private void emitArrayAssignment(final FateParser.Array_initializerContext ctx, final List<TerminalNode> vars) {
+    final List<FateValue> expr = ctx.expression().stream().map(this::visitExpression).toList();
+
+    for(final TerminalNode terminalNode : vars) {
+      final String varName = terminalNode.getText();
+      final FateVariable var = this.fate.addVariable(varName, expr.size());
+
+      for(int arrayIndex = 0; arrayIndex < expr.size(); arrayIndex++) {
+        final FateValue index = this.getExprVar();
+        this.fate.addOp(new FateOp(OpType.MOV, new FateImmediate(Integer.toString(arrayIndex)), index));
+        this.fate.addOp(new FateOp(OpType.MOV, expr.get(arrayIndex), new FateArrayVariable(var, index)));
+      }
+    }
+  }
+
+  @Override
+  public FateValue visitGlobal(final FateParser.GlobalContext ctx) {
+    final FateVariable var = this.fate.addVariable(ctx.IDENTIFIER().getText());
+
+    if(ctx.NUMBER() != null) {
+      this.fate.addOp(new FateGlobal(var.name, ctx.NUMBER().getText()));
+    } else if(ctx.const_array_initializer() != null) {
+      final String[] values = ctx.const_array_initializer().NUMBER().stream().map(TerminalNode::getText).toArray(String[]::new);
+      this.fate.addOp(new FateGlobal(var.name, values));
+    } else {
+      this.errors.add(ctx.getStart().getLine() + ": unknown global initializer");
+    }
+
+    return null;
   }
 
   @Override
@@ -291,7 +338,7 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
       int methodIndex;
 
       for(methodIndex = 0; methodIndex < this.meta.methods.length; methodIndex++) {
-        if(this.meta.methods[methodIndex].name.equalsIgnoreCase(name)) {
+        if(this.meta.methods[methodIndex].name.equals(name)) {
           def = this.meta.methods[methodIndex];
           break;
         }
@@ -405,6 +452,12 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
 
       if(ctx.value().id() != null) {
         return new FateRegId(ctx.value().id().getText());
+      }
+
+      if(ctx.value().array_lookup() != null) {
+        final FateValue name = this.getVar(ctx.value().array_lookup(), ctx.value().array_lookup().IDENTIFIER());
+        final FateValue expression = this.valueToVariable(this.visitExpression(ctx.value().array_lookup().expression()));
+        return new FateArrayVariable(name, expression);
       }
 
       if(ctx.value().call() != null) {
@@ -669,7 +722,7 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
     if(ctx.IDENTIFIER() != null) {
       for(final String[] values : this.meta.enums.values()) {
         for(final String value : values) {
-          if(value.equalsIgnoreCase(ctx.IDENTIFIER().getText())) {
+          if(value.equals(ctx.IDENTIFIER().getText())) {
             return new FateEnum(value);
           }
         }
@@ -727,6 +780,21 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
   @Override
   public FateValue visitId(final FateParser.IdContext ctx) {
     return this.visitChildren(ctx);
+  }
+
+  @Override
+  public FateValue visitArray_initializer(final FateParser.Array_initializerContext ctx) {
+    throw new RuntimeException("Shouldn't be called directly");
+  }
+
+  @Override
+  public FateValue visitArray_lookup(final FateParser.Array_lookupContext ctx) {
+    throw new RuntimeException("Shouldn't be called directly");
+  }
+
+  @Override
+  public FateValue visitConst_array_initializer(final FateParser.Const_array_initializerContext ctx) {
+    throw new RuntimeException("Shouldn't be called directly");
   }
 
   @Override

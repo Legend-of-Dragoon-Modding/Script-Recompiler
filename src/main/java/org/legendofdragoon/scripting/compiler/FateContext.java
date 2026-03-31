@@ -55,7 +55,11 @@ public class FateContext {
   }
 
   public FateVariable addVariable(final String name) {
-    final FateVariable var = this.getCurrentScope().addVariable(name);
+    return this.addVariable(name, 1);
+  }
+
+  public FateVariable addVariable(final String name, final int length) {
+    final FateVariable var = this.getCurrentScope().addVariable(name, length);
 
     if(this.getCurrentFunction() != null) {
       this.getCurrentFunction().addVariable(var);

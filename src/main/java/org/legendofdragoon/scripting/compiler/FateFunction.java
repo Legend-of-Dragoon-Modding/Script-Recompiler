@@ -58,9 +58,8 @@ public class FateFunction extends FateOp {
     final StringBuilder builder = new StringBuilder("\n");
 
     for(final FateVariable var : this.variables) {
-      builder
-        .append(var.name).append(':').append('\n')
-        .append("data 0\n");
+      builder.append(var.name).append(':').append('\n');
+      builder.repeat("data 0\n", var.length);
     }
 
     builder.append(this.name).append(':');
