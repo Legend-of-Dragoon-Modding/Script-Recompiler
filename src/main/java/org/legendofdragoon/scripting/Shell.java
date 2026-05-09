@@ -27,6 +27,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,6 +43,9 @@ public final class Shell {
   private static final Logger LOGGER = LogManager.getFormatterLogger();
 
   public static void main(final String[] args) throws IOException, URISyntaxException, CsvException, NoSuchVersionException, PatchFailedException {
+    LOGGER.info("Working directory: %s", Path.of(".").toAbsolutePath().normalize());
+    LOGGER.info("Params: %s", Arrays.toString(args));
+
     if(args.length == 0) {
       LOGGER.info("Commands: [v]ersions, [d]ecompile, [c]ompile, [g]enpatch, [a]pplypatch, [u]ndopatch, [s]trip");
       System.exit(1);
@@ -91,7 +95,8 @@ public final class Shell {
     final Options options = new Options();
     options.addOption("v", "version", true, "The meta version to use");
     options.addRequiredOption("i", "in", true, "The input file");
-    options.addRequiredOption("o", "out", true, "The output file");
+    options.addOption("o", "out", true, "The output file");
+    options.addOption("w", "working-directory", true, "The directory in which to locate relative input/output files");
 
     if("c".equals(args[0]) || "compile".equals(args[0])) {
       options.addOption("L", "libs", true, "Add a library directory against which #includes will be resolved");
@@ -123,17 +128,43 @@ public final class Shell {
     LOGGER.info("Loading meta %s...", version);
     final Meta meta = metaManager.loadMeta(version);
 
-    final Path inputFile = Paths.get(cmd.getOptionValue("in")).toAbsolutePath().normalize();
-    final Path outputFile = Paths.get(cmd.getOptionValue("out")).toAbsolutePath().normalize();
+    final Path workingDirectory;
+    if(cmd.hasOption("working-directory")) {
+      workingDirectory = Path.of(cmd.getOptionValue("working-directory"));
+    } else {
+      workingDirectory = Path.of(".").toAbsolutePath().normalize();
+    }
+
+    Path inputFile = Paths.get(cmd.getOptionValue("in"));
+
+    Path outputFile;
+    if(cmd.hasOption("out")) {
+      outputFile = Paths.get(cmd.getOptionValue("out"));
+    } else {
+      outputFile = Paths.get(cmd.getOptionValue("in") + ".txt");
+    }
+
+    if(!inputFile.isAbsolute()) {
+      inputFile = workingDirectory.resolve(inputFile);
+    }
+
+    if(!outputFile.isAbsolute()) {
+      outputFile = workingDirectory.resolve(outputFile);
+    }
+
+    inputFile = inputFile.toAbsolutePath().normalize();
+    outputFile = outputFile.toAbsolutePath().normalize();
 
     if(!Files.exists(inputFile)) {
-      LOGGER.error("Error: input file does not exist");
+      LOGGER.error("Error: input file %s does not exist", inputFile);
       System.exit(1);
       return;
     }
 
     switch(args[0]) {
       case "d", "decompile" -> {
+        LOGGER.info("Disassembling %s...", inputFile);
+
         final Disassembler disassembler = new Disassembler(meta);
 
         final String[] branchesIn = cmd.getOptionValues("branch");
@@ -173,9 +204,6 @@ public final class Shell {
         }
 
         final Translator translator = new Translator();
-
-        LOGGER.info("Decompiling %s...", inputFile);
-
         final byte[] bytes = Files.readAllBytes(inputFile);
         final Script script = disassembler.disassemble(inputFile.toString(), bytes, extraBranches, tableLengths);
         final String decompiledOutput = translator.translate(script, meta, stripNames, stripComments, lineNumbers);
