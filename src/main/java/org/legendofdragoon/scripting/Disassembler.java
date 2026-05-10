@@ -425,15 +425,19 @@ public class Disassembler {
     }
 
     final LengthPredicate lengthPredicate;
+    final boolean constantLength;
     if(tableLengths.containsKey(tableAddress)) { // Explicit table length
       lengthPredicate = (entryIndex, entryAddress, earliestDestination, latestDestination) ->
         entryIndex < tableLengths.get(tableAddress);
+      constantLength = true;
     } else if(length.isRange()) { // Table length determined by possible range of register
       lengthPredicate = (entryIndex, entryAddress, earliestDestination, latestDestination) ->
         entryIndex < length.max();
+      constantLength = true;
     } else { // Heuristic that only allows all positive or all negative pointers (breaks a few tables like in Kazas garbage room) but yields much better results overall)
       lengthPredicate = (entryIndex, entryAddress, earliestDestination, latestDestination) ->
         state.wordAt(entryAddress) > 0 ? entryAddress < earliestDestination : entryAddress > latestDestination;
+      constantLength = false;
     }
 
     final List<Integer> destinations = new ArrayList<>();
@@ -448,34 +452,36 @@ public class Disassembler {
     ) {
       int destination = tableAddress + state.wordAt(entryAddress) * 0x4;
 
-      if(op.type == OpType.CALL && "string".equalsIgnoreCase(this.meta.methods[op.headerParam].params[paramIndex].type)) {
-        if(script.entries[entryAddress / 4] instanceof Op) {
-          break;
-        }
-
-        if(this.isProbablyOp(script, state, entryAddress)) {
-          boolean foundTerminator = false;
-
-          // Look for a string terminator at the destination
-          for(int i = destination / 4; i < destination / 4 + 300; i++) {
-            // We ran into another entry or the end of the script
-            if(i >= script.entries.length || script.entries[i] != null) {
-              break;
-            }
-
-            final int word = state.wordAt(i * 0x4);
-            if((word & 0xffff) == 0xa0ff || (word >> 16 & 0xffff) == 0xa0ff) {
-              foundTerminator = true;
-              break;
-            }
-          }
-
-          if(!foundTerminator) {
+      if(!constantLength) {
+        if(op.type == OpType.CALL && "string".equalsIgnoreCase(this.meta.methods[op.headerParam].params[paramIndex].type)) {
+          if(script.entries[entryAddress / 4] instanceof Op) {
             break;
           }
+
+          if(this.isProbablyOp(script, state, entryAddress)) {
+            boolean foundTerminator = false;
+
+            // Look for a string terminator at the destination
+            for(int i = destination / 4; i < destination / 4 + 300; i++) {
+              // We ran into another entry or the end of the script
+              if(i >= script.entries.length || script.entries[i] != null) {
+                break;
+              }
+
+              final int word = state.wordAt(i * 0x4);
+              if((word & 0xffff) == 0xa0ff || (word >> 16 & 0xffff) == 0xa0ff) {
+                foundTerminator = true;
+                break;
+              }
+            }
+
+            if(!foundTerminator) {
+              break;
+            }
+          }
+        } else if(this.isProbablyOp(script, state, entryAddress)) {
+          break;
         }
-      } else if(this.isProbablyOp(script, state, entryAddress)) {
-        break;
       }
 
       if(destination >= state.length() - 0x4) {
