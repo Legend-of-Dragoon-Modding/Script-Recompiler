@@ -285,6 +285,7 @@ public final class Shell {
     options.addRequiredOption("a", "original", true, "The original file");
     options.addRequiredOption("b", "modified", true, "The modified file");
     options.addRequiredOption("o", "out", true, "The output file");
+    options.addOption("w", "working-directory", true, "The directory in which to locate relative input/output files");
 
     final CommandLine cmd;
     final CommandLineParser parser = new DefaultParser();
@@ -304,9 +305,32 @@ public final class Shell {
     LOGGER.info("Loading meta %s...", version);
     final Meta meta = metaManager.loadMeta(version);
 
-    final Path originalFile = Paths.get(cmd.getOptionValue("original")).toAbsolutePath();
-    final Path modifiedFile = Paths.get(cmd.getOptionValue("modified")).toAbsolutePath();
-    final Path outputFile = Paths.get(cmd.getOptionValue("out")).toAbsolutePath();
+    final Path workingDirectory;
+    if(cmd.hasOption("working-directory")) {
+      workingDirectory = Path.of(cmd.getOptionValue("working-directory"));
+    } else {
+      workingDirectory = Path.of(".").toAbsolutePath().normalize();
+    }
+
+    Path originalFile = Paths.get(cmd.getOptionValue("original"));
+    Path modifiedFile = Paths.get(cmd.getOptionValue("modified"));
+    Path outputFile = Paths.get(cmd.getOptionValue("out"));
+
+    if(!originalFile.isAbsolute()) {
+      originalFile = workingDirectory.resolve(originalFile);
+    }
+
+    if(!modifiedFile.isAbsolute()) {
+      modifiedFile = workingDirectory.resolve(modifiedFile);
+    }
+
+    if(!outputFile.isAbsolute()) {
+      outputFile = workingDirectory.resolve(outputFile);
+    }
+
+    originalFile = originalFile.toAbsolutePath().normalize();
+    modifiedFile = modifiedFile.toAbsolutePath().normalize();
+    outputFile = outputFile.toAbsolutePath().normalize();
 
     if(!Files.exists(originalFile) || !Files.exists(modifiedFile)) {
       LOGGER.error("Error: one or both input files do not exist");
