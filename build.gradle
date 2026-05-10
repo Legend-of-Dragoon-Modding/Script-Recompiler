@@ -4,10 +4,11 @@ plugins {
   id 'signing'
   id 'antlr'
   id 'idea'
+  id 'application'
 }
 
 group 'org.legendofdragoon'
-version '0.6.2'
+version '0.7.0'
 
 ext.isReleaseVersion = !version.endsWith("SNAPSHOT")
 
@@ -68,6 +69,10 @@ tasks.withType(Sign).configureEach {
 java {
   withJavadocJar()
   withSourcesJar()
+}
+
+application {
+  mainClass = 'org.legendofdragoon.scripting.Shell'
 }
 
 artifacts {
