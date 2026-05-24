@@ -46,7 +46,7 @@ reg : REG LBRACKET expression RBRACKET ;
 id : IDENTIFIER COLON IDENTIFIER ;
 array_initializer : LBRACKET expression (COMMA expression)* RBRACKET ;
 array_lookup : IDENTIFIER LBRACKET expression RBRACKET ;
-const_array_initializer : LBRACKET NUMBER (COMMA NUMBER)* RBRACKET ;
+const_array_initializer : LBRACKET (NUMBER (COMMA NUMBER)* | STRING (COMMA STRING)*) COMMA? RBRACKET ;
 
 postfix_op : INCR | DECR ;
 comp_op : EQ | NEQ | GT | LT | GTE | LTE | ANDC | ORC ;
@@ -121,3 +121,6 @@ WHITESPACE : [ \n] -> skip ;
 LINE_COMMENT : '//' ~[\r\n]* -> skip ;
 BLOCK_COMMENT : '/*' .*? '*/' -> skip ;
 
+STRING : '"' ( ESC_SEQ | ~('\\' | '"') )* '"' ;
+
+fragment ESC_SEQ : '\\' [n"\\] ;

@@ -84,10 +84,18 @@ public class Tokenizer {
 
     List<String> lines = this.splitSource(source);
 
-    final List<Entry> entries = new ArrayList<>();
+    final List<Entry> entrypoints = new ArrayList<>();
     final Map<String, Integer> labels = new HashMap<>();
     final Set<String> tables = new HashSet<>();
     final Set<Path> includedScripts = new HashSet<>();
+
+    for(int lineIndex = 0; lineIndex < lines.size(); lineIndex++) {
+      if(lines.get(lineIndex).startsWith("entrypoint :")) {
+        entrypoints.add(this.tokenizeLine(entrypoints.size() * 0x4, lines.get(lineIndex)));
+      }
+    }
+
+    final List<Entry> entries = new ArrayList<>(entrypoints);
 
     for(int lineIndex = 0; lineIndex < lines.size(); lineIndex++) {
       final String line = lines.get(lineIndex);
@@ -133,6 +141,11 @@ public class Tokenizer {
       }
 
       final Entry entry = this.tokenizeLine(address, line);
+
+      if(entry instanceof Entrypoint) {
+        continue;
+      }
+
       entries.add(entry);
 
       if(entry instanceof final Op op) {

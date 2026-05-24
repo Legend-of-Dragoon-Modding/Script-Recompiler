@@ -292,10 +292,34 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
     final FateVariable var = this.fate.addVariable(ctx.IDENTIFIER().getText());
 
     if(ctx.NUMBER() != null) {
-      this.fate.addOp(new FateGlobal(var.name, ctx.NUMBER().getText()));
+      this.fate.addOp(new FateGlobal("data", var.name, ctx.NUMBER().getText()));
     } else if(ctx.const_array_initializer() != null) {
-      final String[] values = ctx.const_array_initializer().NUMBER().stream().map(TerminalNode::getText).toArray(String[]::new);
-      this.fate.addOp(new FateGlobal(var.name, values));
+      if(!ctx.const_array_initializer().NUMBER().isEmpty()) {
+        final String[] values = ctx.const_array_initializer().NUMBER().stream().map(TerminalNode::getText).toArray(String[]::new);
+        this.fate.addOp(new FateGlobal("data", var.name, values));
+      } else if(!ctx.const_array_initializer().STRING().isEmpty()) {
+        var.isRel = true;
+
+        final int size = ctx.const_array_initializer().STRING().size();
+        final String[] labels = new String[size];
+        final String[] rels = new String[size];
+        final String[] strings = new String[size];
+
+        for(int i = 0; i < size; i++) {
+          labels[i] = var.name + "__entry_" + i;
+          rels[i] = ':' + labels[i];
+          strings[i] = ctx.const_array_initializer().STRING(i).getText();
+          strings[i] = strings[i].substring(1, strings[i].length() - 1);
+        }
+
+        this.fate.addOp(new FateGlobal("rel", var.name, rels));
+
+        for(int i = 0; i < size; i++) {
+          this.fate.addOp(new FateGlobal("data", labels[i], "str[" + strings[i] + ']'));
+        }
+      } else {
+        this.errors.add(ctx.getStart().getLine() + ": unknown global initializer");
+      }
     } else {
       this.errors.add(ctx.getStart().getLine() + ": unknown global initializer");
     }
@@ -457,6 +481,14 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
       if(ctx.value().array_lookup() != null) {
         final FateValue name = this.getVar(ctx.value().array_lookup(), ctx.value().array_lookup().IDENTIFIER());
         final FateValue expression = this.valueToVariable(this.visitExpression(ctx.value().array_lookup().expression()));
+
+        if(name instanceof final FateVariable var && var.isRel) {
+          // rels only support stors as their index
+          final FateStor stor = new FateStor(null, new FateImmediate("62"));
+          this.fate.addOp(new FateOp(OpType.MOV, expression, stor));
+          return new FateArrayVariable(name, stor);
+        }
+
         return new FateArrayVariable(name, expression);
       }
 

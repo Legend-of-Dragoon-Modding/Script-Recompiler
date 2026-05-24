@@ -11,6 +11,10 @@ public class FateArrayVariable extends FateValue {
 
   @Override
   public String toString() {
+    if(this.var instanceof final FateVariable var && var.isRel) {
+      return "inl[:" + var.name + "[:" + var.name + '[' + this.index + "]]]";
+    }
+
     return this.var.toString() + '[' + this.index + ']' ;
   }
 }
