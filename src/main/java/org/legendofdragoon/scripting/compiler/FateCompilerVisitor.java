@@ -552,75 +552,6 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
       return out;
     }
 
-    // Comparisons
-    if(ctx.comp_op() != null) {
-      if(ctx.comp_op().EQ() != null) {
-        final FateVariable out = this.getExprVar();
-        final FateValue a = this.visitExpression(ctx.expression(0));
-        final FateValue b = this.visitExpression(ctx.expression(1));
-        this.fate.addOp(new FateOp(OpType.CMP, new FateImmediate("=="), a, b, out));
-        return out;
-      }
-
-      if(ctx.comp_op().NEQ() != null) {
-        final FateVariable out = this.getExprVar();
-        final FateValue a = this.visitExpression(ctx.expression(0));
-        final FateValue b = this.visitExpression(ctx.expression(1));
-        this.fate.addOp(new FateOp(OpType.CMP, new FateImmediate("!="), a, b, out));
-        return out;
-      }
-
-      if(ctx.comp_op().GT() != null) {
-        final FateVariable out = this.getExprVar();
-        final FateValue a = this.visitExpression(ctx.expression(0));
-        final FateValue b = this.visitExpression(ctx.expression(1));
-        this.fate.addOp(new FateOp(OpType.CMP, new FateImmediate(">"), a, b, out));
-        return out;
-      }
-
-      if(ctx.comp_op().LT() != null) {
-        final FateVariable out = this.getExprVar();
-        final FateValue a = this.visitExpression(ctx.expression(0));
-        final FateValue b = this.visitExpression(ctx.expression(1));
-        this.fate.addOp(new FateOp(OpType.CMP, new FateImmediate("<"), a, b, out));
-        return out;
-      }
-
-      if(ctx.comp_op().GTE() != null) {
-        final FateVariable out = this.getExprVar();
-        final FateValue a = this.visitExpression(ctx.expression(0));
-        final FateValue b = this.visitExpression(ctx.expression(1));
-        this.fate.addOp(new FateOp(OpType.CMP, new FateImmediate(">="), a, b, out));
-        return out;
-      }
-
-      if(ctx.comp_op().LTE() != null) {
-        final FateVariable out = this.getExprVar();
-        final FateValue a = this.visitExpression(ctx.expression(0));
-        final FateValue b = this.visitExpression(ctx.expression(1));
-        this.fate.addOp(new FateOp(OpType.CMP, new FateImmediate("<="), a, b, out));
-        return out;
-      }
-
-      if(ctx.comp_op().ANDC() != null) {
-        final FateVariable out = this.getExprVar();
-        final FateValue a = this.visitExpression(ctx.expression(0));
-        final FateValue b = this.visitExpression(ctx.expression(1));
-        this.fate.addOp(new FateOp(OpType.CMP, new FateImmediate("&&"), a, b, out));
-        return out;
-      }
-
-      if(ctx.comp_op().ORC() != null) {
-        final FateVariable out = this.getExprVar();
-        final FateValue a = this.visitExpression(ctx.expression(0));
-        final FateValue b = this.visitExpression(ctx.expression(1));
-        this.fate.addOp(new FateOp(OpType.CMP, new FateImmediate("||"), a, b, out));
-        return out;
-      }
-
-      this.errors.add(ctx.getStart().getLine() + ": unimplemented op " + ctx.getText());
-    }
-
     // Multiplicative
     if(ctx.mult_op() != null) {
       if(ctx.mult_op().MUL() != null) {
@@ -699,38 +630,106 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
       this.errors.add(ctx.getStart().getLine() + ": unimplemented op " + ctx.getText());
     }
 
-    // Bitwise
-    if(ctx.bit_op() != null) {
-      if(ctx.bit_op().ANDA() != null) {
+    // Comparisons
+    if(ctx.relational_op() != null) {
+      if(ctx.relational_op().GT() != null) {
         final FateVariable out = this.getExprVar();
         final FateValue a = this.visitExpression(ctx.expression(0));
         final FateValue b = this.visitExpression(ctx.expression(1));
-        this.fate.addOp(new FateOp(OpType.MOV, a, out));
-        this.fate.addOp(new FateOp(OpType.AND, b, out));
+        this.fate.addOp(new FateOp(OpType.CMP, new FateImmediate(">"), a, b, out));
         return out;
       }
 
-      if(ctx.bit_op().ORA() != null) {
+      if(ctx.relational_op().LT() != null) {
         final FateVariable out = this.getExprVar();
         final FateValue a = this.visitExpression(ctx.expression(0));
         final FateValue b = this.visitExpression(ctx.expression(1));
-        this.fate.addOp(new FateOp(OpType.MOV, a, out));
-        this.fate.addOp(new FateOp(OpType.OR, b, out));
+        this.fate.addOp(new FateOp(OpType.CMP, new FateImmediate("<"), a, b, out));
         return out;
       }
 
-      if(ctx.bit_op().XORA() != null) {
+      if(ctx.relational_op().GTE() != null) {
         final FateVariable out = this.getExprVar();
         final FateValue a = this.visitExpression(ctx.expression(0));
         final FateValue b = this.visitExpression(ctx.expression(1));
-        this.fate.addOp(new FateOp(OpType.MOV, a, out));
-        this.fate.addOp(new FateOp(OpType.XOR, b, out));
+        this.fate.addOp(new FateOp(OpType.CMP, new FateImmediate(">="), a, b, out));
+        return out;
+      }
+
+      if(ctx.relational_op().LTE() != null) {
+        final FateVariable out = this.getExprVar();
+        final FateValue a = this.visitExpression(ctx.expression(0));
+        final FateValue b = this.visitExpression(ctx.expression(1));
+        this.fate.addOp(new FateOp(OpType.CMP, new FateImmediate("<="), a, b, out));
+        return out;
+      }
+    }
+
+    if(ctx.equality_op() != null) {
+      if(ctx.equality_op().EQ() != null) {
+        final FateVariable out = this.getExprVar();
+        final FateValue a = this.visitExpression(ctx.expression(0));
+        final FateValue b = this.visitExpression(ctx.expression(1));
+        this.fate.addOp(new FateOp(OpType.CMP, new FateImmediate("=="), a, b, out));
+        return out;
+      }
+
+      if(ctx.equality_op().NEQ() != null) {
+        final FateVariable out = this.getExprVar();
+        final FateValue a = this.visitExpression(ctx.expression(0));
+        final FateValue b = this.visitExpression(ctx.expression(1));
+        this.fate.addOp(new FateOp(OpType.CMP, new FateImmediate("!="), a, b, out));
         return out;
       }
 
       this.errors.add(ctx.getStart().getLine() + ": unimplemented op " + ctx.getText());
     }
 
+    // Bitwise
+    if(ctx.ANDA() != null) {
+      final FateVariable out = this.getExprVar();
+      final FateValue a = this.visitExpression(ctx.expression(0));
+      final FateValue b = this.visitExpression(ctx.expression(1));
+      this.fate.addOp(new FateOp(OpType.MOV, a, out));
+      this.fate.addOp(new FateOp(OpType.AND, b, out));
+      return out;
+    }
+
+    if(ctx.XORA() != null) {
+      final FateVariable out = this.getExprVar();
+      final FateValue a = this.visitExpression(ctx.expression(0));
+      final FateValue b = this.visitExpression(ctx.expression(1));
+      this.fate.addOp(new FateOp(OpType.MOV, a, out));
+      this.fate.addOp(new FateOp(OpType.XOR, b, out));
+      return out;
+    }
+
+    if(ctx.ORA() != null) {
+      final FateVariable out = this.getExprVar();
+      final FateValue a = this.visitExpression(ctx.expression(0));
+      final FateValue b = this.visitExpression(ctx.expression(1));
+      this.fate.addOp(new FateOp(OpType.MOV, a, out));
+      this.fate.addOp(new FateOp(OpType.OR, b, out));
+      return out;
+    }
+
+    if(ctx.ANDC() != null) {
+      final FateVariable out = this.getExprVar();
+      final FateValue a = this.visitExpression(ctx.expression(0));
+      final FateValue b = this.visitExpression(ctx.expression(1));
+      this.fate.addOp(new FateOp(OpType.CMP, new FateImmediate("&&"), a, b, out));
+      return out;
+    }
+
+    if(ctx.ORC() != null) {
+      final FateVariable out = this.getExprVar();
+      final FateValue a = this.visitExpression(ctx.expression(0));
+      final FateValue b = this.visitExpression(ctx.expression(1));
+      this.fate.addOp(new FateOp(OpType.CMP, new FateImmediate("||"), a, b, out));
+      return out;
+    }
+
+    this.errors.add(ctx.getStart().getLine() + ": unimplemented op " + ctx.getText());
     return this.visitChildren(ctx);
   }
 
@@ -835,11 +834,6 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
   }
 
   @Override
-  public FateValue visitComp_op(final FateParser.Comp_opContext ctx) {
-    return this.visitChildren(ctx);
-  }
-
-  @Override
   public FateValue visitMult_op(final FateParser.Mult_opContext ctx) {
     return this.visitChildren(ctx);
   }
@@ -855,7 +849,12 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
   }
 
   @Override
-  public FateValue visitBit_op(final FateParser.Bit_opContext ctx) {
+  public FateValue visitRelational_op(final FateParser.Relational_opContext ctx) {
+    return this.visitChildren(ctx);
+  }
+
+  @Override
+  public FateValue visitEquality_op(final FateParser.Equality_opContext ctx) {
     return this.visitChildren(ctx);
   }
 }

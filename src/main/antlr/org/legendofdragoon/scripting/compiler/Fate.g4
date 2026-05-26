@@ -31,11 +31,16 @@ expression_list : LPAREN (expression (COMMA expression)*)? RPAREN ;
 expression :
   LPAREN expression RPAREN |
   (ADD | SUB | NOTC | NOTA) expression |
-  expression comp_op expression |
   expression mult_op expression |
   expression add_op expression |
   expression shift_op expression |
-  expression bit_op expression |
+  expression relational_op expression |
+  expression equality_op expression |
+  expression ANDA expression |
+  expression XORA expression |
+  expression ORA expression |
+  expression ANDC expression |
+  expression ORC expression |
   value ;
 
 value : NUMBER | call | assignable | id | array_lookup ;
@@ -49,11 +54,11 @@ array_lookup : IDENTIFIER LBRACKET expression RBRACKET ;
 const_array_initializer : LBRACKET (NUMBER (COMMA NUMBER)* | STRING (COMMA STRING)*) COMMA? RBRACKET ;
 
 postfix_op : INCR | DECR ;
-comp_op : EQ | NEQ | GT | LT | GTE | LTE | ANDC | ORC ;
 mult_op : MUL | DIV | MOD ;
 add_op : ADD | SUB ;
 shift_op : SHR | SHL ;
-bit_op : ANDA | ORA | XORA ;
+relational_op : GT | LT | GTE | LTE ;
+equality_op : EQ | NEQ ;
 
 /*
  * Lexer Rules
