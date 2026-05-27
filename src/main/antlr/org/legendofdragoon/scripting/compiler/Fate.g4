@@ -21,12 +21,15 @@ assignment : (assignable | assignable_list) ASSIGN (expression | array_initializ
 declaration : VAR (IDENTIFIER | identifier_list) (ASSIGN (expression | array_initializer))? ;
 global : VAR IDENTIFIER ASSIGN (NUMBER | const_array_initializer) TERM ;
 
-call : IDENTIFIER (SCOPE IDENTIFIER)? expression_list ;
+call : IDENTIFIER (SCOPE IDENTIFIER)? expression_or_string_list ;
 return_ : RETURN (expression | expression_list)? ;
 
 identifier_list : LPAREN (IDENTIFIER (COMMA IDENTIFIER)*)? RPAREN ;
 assignable_list : LPAREN (assignable (COMMA assignable)*)? RPAREN ;
 expression_list : LPAREN (expression (COMMA expression)*)? RPAREN ;
+expression_or_string_list : LPAREN (expression_or_string (COMMA expression_or_string)*)? RPAREN ;
+
+expression_or_string : expression | STRING ;
 
 expression :
   LPAREN expression RPAREN |

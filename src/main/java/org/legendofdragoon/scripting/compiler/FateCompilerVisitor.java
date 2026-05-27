@@ -334,13 +334,21 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
 
     // ASM op
     if(opType != null) {
-      if(ctx.expression_list().expression().size() != opType.params.length) {
-        this.errors.add(ctx.getStart().getLine() + ": expected " + opType.params.length + " params, got " + ctx.expression_list().expression().size());
+      if(ctx.expression_or_string_list().expression_or_string().size() != opType.params.length) {
+        this.errors.add(ctx.getStart().getLine() + ": expected " + opType.params.length + " params, got " + ctx.expression_or_string_list().expression_or_string().size());
       }
 
-      final FateValue[] params = ctx.expression_list().expression().stream()
-        .map(this::visitExpression)
-        .toArray(FateValue[]::new);
+      final FateValue[] params = new FateValue[ctx.expression_or_string_list().expression_or_string().size()];
+
+      for(int i = 0; i < ctx.expression_or_string_list().expression_or_string().size(); i++) {
+        if(ctx.expression_or_string_list().expression_or_string(i).STRING() != null) {
+          this.errors.add(ctx.getStart().getLine() + ": strings cannot be passed to ASM ops");
+          params[i] = new FateImmediate("INVALID");
+          continue;
+        }
+
+        params[i] = this.visitExpression(ctx.expression_or_string_list().expression_or_string(i).expression());
+      }
 
       if(opType == OpType.WAIT && params[0] instanceof FateImmediate) {
         // WAIT will decrement the value. If it's an inl, that value will still be 0 the next time the function is run. This
@@ -373,15 +381,27 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
         return null;
       }
 
-      if(ctx.expression_list() == null && def.params.length != 0 || ctx.expression_list().expression().size() != def.params.length) {
-        this.errors.add(ctx.getStart().getLine() + ": expected " + def.params.length + " params, got " + ctx.expression_list().expression().size());
+      if(ctx.expression_or_string_list() == null && def.params.length != 0 || ctx.expression_or_string_list().expression_or_string().size() != def.params.length) {
+        this.errors.add(ctx.getStart().getLine() + ": expected " + def.params.length + " params, got " + ctx.expression_or_string_list().expression_or_string().size());
       }
 
-      final FateValue[] params = new FateValue[ctx.expression_list().expression().size() + 1];
+      final FateValue[] params = new FateValue[ctx.expression_or_string_list().expression_or_string().size() + 1];
       params[0] = new FateImmediate(def.name);
 
-      for(int i = 0; i < ctx.expression_list().expression().size(); i++) {
-        params[i + 1] = this.visitExpression(ctx.expression_list().expression().get(i));
+      for(int i = 0; i < ctx.expression_or_string_list().expression_or_string().size(); i++) {
+        final FateParser.Expression_or_stringContext expressionOrString = ctx.expression_or_string_list().expression_or_string(i);
+
+        if(expressionOrString.expression() != null) {
+          params[i + 1] = this.visitExpression(expressionOrString.expression());
+        } else if(expressionOrString.STRING() != null) {
+          final String string = expressionOrString.STRING().getText();
+          final FateVariable stringVar = this.getExprVar();
+          stringVar.value = new FateString(string.substring(1, string.length() - 1)).toString();
+          params[i + 1] = stringVar;
+        } else {
+          this.errors.add(ctx.getStart().getLine() + ": unknown parameter type");
+          params[i + 1] = new FateImmediate("INVALID");
+        }
       }
 
       this.fate.addOp(new FateOp(OpType.CALL, params));
@@ -392,16 +412,22 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
     final FateFunctionDefinition def = this.functions.get(name);
 
     if(def != null) {
-      if(ctx.expression_list() == null && !def.params.isEmpty() || ctx.expression_list().expression().size() != def.params.size()) {
-        this.errors.add(ctx.getStart().getLine() + ": expected " + def.params.size() + " params, got " + ctx.expression_list().expression().size());
+      if(ctx.expression_or_string_list() == null && !def.params.isEmpty() || ctx.expression_or_string_list().expression_or_string().size() != def.params.size()) {
+        this.errors.add(ctx.getStart().getLine() + ": expected " + def.params.size() + " params, got " + ctx.expression_or_string_list().expression_or_string().size());
       }
     } else {
       this.errors.add(ctx.getStart().getLine() + ": unknown function " + name);
     }
 
     // Push params
-    for(final FateParser.ExpressionContext exprCtx : ctx.expression_list().expression()) {
-      final FateValue value = this.visitExpression(exprCtx);
+    for(final FateParser.Expression_or_stringContext exprCtx : ctx.expression_or_string_list().expression_or_string()) {
+      if(exprCtx.STRING() != null) {
+        this.errors.add(ctx.getStart().getLine() + ": strings cannot be passed as parameters");
+        this.fate.addOp(new FateOp(OpType.PUSH, new FateImmediate("INVALID")));
+        continue;
+      }
+
+      final FateValue value = this.visitExpression(exprCtx.expression());
       this.fate.addOp(new FateOp(OpType.PUSH, value));
     }
 
@@ -454,6 +480,16 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
 
   @Override
   public FateValue visitExpression_list(final FateParser.Expression_listContext ctx) {
+    return this.visitChildren(ctx);
+  }
+
+  @Override
+  public FateValue visitExpression_or_string_list(final FateParser.Expression_or_string_listContext ctx) {
+    return this.visitChildren(ctx);
+  }
+
+  @Override
+  public FateValue visitExpression_or_string(final FateParser.Expression_or_stringContext ctx) {
     return this.visitChildren(ctx);
   }
 

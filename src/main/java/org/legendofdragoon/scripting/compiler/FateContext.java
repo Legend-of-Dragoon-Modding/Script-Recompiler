@@ -12,6 +12,7 @@ public class FateContext {
 
   private final Map<String, FateFunction> functions = new HashMap<>();
   private FateFunction currentFunction;
+  private int currentFunctionStart;
 
   private final Deque<FateScope> scopeStack = new LinkedList<>();
 
@@ -26,6 +27,7 @@ public class FateContext {
     final FateFunction function = new FateFunction(this.getCurrentScope(), name);
     this.functions.put(name, function);
     this.currentFunction = function;
+    this.currentFunctionStart = this.ops.size();
     return function;
   }
 
@@ -84,6 +86,10 @@ public class FateContext {
 
   public void addOp(final FateOp op) {
     this.ops.add(op);
+  }
+
+  public void addOpBeforeFunction(final FateOp op) {
+    this.ops.add(this.currentFunctionStart, op);
   }
 
   public String compile() {
