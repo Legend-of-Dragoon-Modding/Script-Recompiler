@@ -172,7 +172,7 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
 
   @Override
   public FateValue visitPostfix(final FateParser.PostfixContext ctx) {
-    final FateValue var = this.getVar(ctx, ctx.IDENTIFIER());
+    final FateValue var = this.visitAssignable(ctx.assignable());
 
     if(ctx.postfix_op().INCR() != null) {
       this.fate.addOp(new FateOp(OpType.INCR, var));

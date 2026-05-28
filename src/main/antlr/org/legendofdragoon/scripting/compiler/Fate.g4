@@ -16,7 +16,7 @@ control : if_ | while_ ;
 block : OPENER (statement | control)* CLOSER ;
 
 statement : (declaration | assignment | postfix | call | return_) TERM ;
-postfix : IDENTIFIER postfix_op ;
+postfix : assignable postfix_op ;
 assignment : (assignable | assignable_list) ASSIGN (expression | array_initializer) ;
 declaration : VAR (IDENTIFIER | identifier_list) (ASSIGN (expression | array_initializer))? ;
 global : VAR IDENTIFIER ASSIGN (NUMBER | const_array_initializer) TERM ;
