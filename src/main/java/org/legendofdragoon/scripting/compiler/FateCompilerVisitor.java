@@ -350,9 +350,9 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
         params[i] = this.visitExpression(ctx.expression_or_string_list().expression_or_string(i).expression());
       }
 
-      if(opType == OpType.WAIT && params[0] instanceof FateImmediate) {
-        // WAIT will decrement the value. If it's an inl, that value will still be 0 the next time the function is run. This
-        // special-case handling copies the value first, to avoid this behaviour.
+      if(opType == OpType.WAIT) {
+        // WAIT will decrement the value. That value will still be 0 the next time wait is called unless
+        // it's reset. This special-case handling copies the value first, to avoid this behaviour.
         final FateValue newVal = this.getExprVar();
         this.fate.addOp(new FateOp(OpType.MOV, params[0], newVal));
         params[0] = newVal;
