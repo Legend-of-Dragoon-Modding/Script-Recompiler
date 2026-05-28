@@ -4,6 +4,7 @@ import org.legendofdragoon.scripting.OpType;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -55,11 +56,18 @@ public class FateFunction extends FateOp {
 
   @Override
   public String toString() {
+    final Set<String> seenVarNames = new HashSet<>();
+
     final StringBuilder builder = new StringBuilder("\n");
 
     for(final FateVariable var : this.variables) {
-      builder.append(var.name).append(':').append('\n');
-      builder.repeat("data " + var.value + '\n', var.length);
+      // Variables in different scopes can have the same name. We only want to define each variable name once.
+      if(!seenVarNames.contains(var.name)) {
+        builder.append(var.name).append(':').append('\n');
+        builder.repeat("data " + var.value + '\n', var.length);
+      }
+
+      seenVarNames.add(var.name);
     }
 
     builder.append(this.name).append(':');
