@@ -108,6 +108,7 @@ public final class Shell {
       options.addOption("C", "no-comments", false, "Do not add comments to decompiled scripts");
       options.addOption("N", "no-names", false, "Do not use friendly names for engine calls");
       options.addOption("l", "line-numbers", false, "Prepend lines of decompiler output with addresses");
+      options.addOption("e", "entrypoint-count", true, "The number of entrypoints in this script");
     }
 
     final CommandLine cmd;
@@ -173,6 +174,11 @@ public final class Shell {
         final boolean stripNames = cmd.hasOption("no-names");
         final boolean lineNumbers = cmd.hasOption("line-numbers");
 
+        int entrypointCount = -1;
+        if(cmd.hasOption("entrypoint-count")) {
+          entrypointCount = Integer.parseInt(cmd.getOptionValue("entrypoint-count"));
+        }
+
         final List<Integer> extraBranches = new ArrayList<>();
         final Map<Integer, Integer> tableLengths = new HashMap<>();
 
@@ -205,7 +211,7 @@ public final class Shell {
 
         final Translator translator = new Translator();
         final byte[] bytes = Files.readAllBytes(inputFile);
-        final Script script = disassembler.disassemble(inputFile.toString(), bytes, extraBranches, tableLengths);
+        final Script script = disassembler.disassemble(inputFile.toString(), bytes, extraBranches, tableLengths, entrypointCount);
         final String decompiledOutput = translator.translate(script, meta, stripNames, stripComments, lineNumbers);
 
         Files.createDirectories(outputFile.getParent());

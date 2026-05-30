@@ -41,11 +41,15 @@ public class Disassembler {
   }
 
   public Script disassemble(final String name, final byte[] bytes, final List<Integer> extraBranches, final Map<Integer, Integer> tableLengths) {
+    return this.disassemble(name, bytes, extraBranches, tableLengths, -1);
+  }
+
+  public Script disassemble(final String name, final byte[] bytes, final List<Integer> extraBranches, final Map<Integer, Integer> tableLengths, final int entrypointCount) {
     final State state = new State(bytes);
 
     final Script script = new Script(name, state.length() / 4);
 
-    this.getEntrypoints(script, state);
+    this.getEntrypoints(script, state, entrypointCount);
 
     for(final int entrypoint : script.entrypoints) {
       this.probeBranch(script, state, tableLengths, entrypoint);
@@ -578,8 +582,11 @@ public class Disassembler {
     }
   }
 
-  private void getEntrypoints(final Script script, final State state) {
-    for(int i = 0; i < 0x20 && state.hasMore(); i++) { // Most have 0x10, some have less, player_combat_script is the only one I've seen with 0x20
+  private void getEntrypoints(final Script script, final State state, final int entrypointCount) {
+    final int count = (entrypointCount != -1 ? entrypointCount : 32);
+    LOGGER.info("Disassembling up to %d entrypoints", count);
+
+    for(int i = 0; i < count && state.hasMore(); i++) { // Most have 0x10, some have less, player_combat_script is the only one I've seen with 0x20
       final int entrypoint = state.currentWord();
 
       if(!this.isValidOp(state, entrypoint)) {
