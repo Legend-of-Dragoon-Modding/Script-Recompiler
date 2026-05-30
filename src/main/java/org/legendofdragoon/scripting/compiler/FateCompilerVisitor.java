@@ -83,8 +83,11 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
 
     for(int i = 0; i < ctx.identifier_list().IDENTIFIER().size(); i++) {
       final String param = ctx.identifier_list().IDENTIFIER(i).getText();
-      final FateVariable var = this.fate.getCurrentFunction().addParam(param);
-      this.fate.addOp(new FateOp(OpType.POP, var));
+      this.fate.getCurrentFunction().addParam(param);
+    }
+
+    for(int i = ctx.identifier_list().IDENTIFIER().size() - 1; i >= 0; i--) {
+      this.fate.addOp(new FateOp(OpType.POP, this.fate.getCurrentFunction().getParam(i)));
     }
 
     this.visitBlock(ctx.block());
@@ -168,6 +171,48 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
   @Override
   public FateValue visitStatement(final FateParser.StatementContext ctx) {
     return this.visitChildren(ctx);
+  }
+
+  @Override
+  public FateValue visitAugmented_assignment(final FateParser.Augmented_assignmentContext ctx) {
+    if(ctx.expression() != null) {
+      final FateValue dest = this.visitAssignable(ctx.assignable());
+      final FateValue expr = this.visitExpression(ctx.expression());
+
+      if(ctx.augmented_assignment_op().ANDC_ASSIGN() != null) {
+        this.fate.addOp(new FateOp(OpType.CMP, new FateImmediate("&&"), dest, expr, dest));
+      } else if(ctx.augmented_assignment_op().ORC_ASSIGN() != null) {
+        this.fate.addOp(new FateOp(OpType.CMP, new FateImmediate("||"), dest, expr, dest));
+      } else if(ctx.augmented_assignment_op().MUL_ASSIGN() != null) {
+        this.fate.addOp(new FateOp(OpType.MUL, expr, dest));
+      } else if(ctx.augmented_assignment_op().DIV_ASSIGN() != null) {
+        this.fate.addOp(new FateOp(OpType.DIV, expr, dest));
+      } else if(ctx.augmented_assignment_op().MOD_ASSIGN() != null) {
+        this.fate.addOp(new FateOp(OpType.MOD, expr, dest));
+      } else if(ctx.augmented_assignment_op().ADD_ASSIGN() != null) {
+        this.fate.addOp(new FateOp(OpType.ADD, expr, dest));
+      } else if(ctx.augmented_assignment_op().SUB_ASSIGN() != null) {
+        this.fate.addOp(new FateOp(OpType.SUB, expr, dest));
+      } else if(ctx.augmented_assignment_op().ANDA_ASSIGN() != null) {
+        this.fate.addOp(new FateOp(OpType.AND, expr, dest));
+      } else if(ctx.augmented_assignment_op().ORA_ASSIGN() != null) {
+        this.fate.addOp(new FateOp(OpType.OR, expr, dest));
+      } else if(ctx.augmented_assignment_op().XORA_ASSIGN() != null) {
+        this.fate.addOp(new FateOp(OpType.XOR, expr, dest));
+      } else if(ctx.augmented_assignment_op().NOTA_ASSIGN() != null) {
+        this.fate.addOp(new FateOp(OpType.NOT, expr, dest));
+      } else if(ctx.augmented_assignment_op().SHR_ASSIGN() != null) {
+        this.fate.addOp(new FateOp(OpType.SHR, expr, dest));
+      } else if(ctx.augmented_assignment_op().SHL_ASSIGN() != null) {
+        this.fate.addOp(new FateOp(OpType.SHL, expr, dest));
+      } else {
+        this.errors.add(ctx.getStart().getLine() + ": unknown operator type " + ctx.augmented_assignment_op().getText());
+      }
+    } else {
+      this.errors.add(ctx.getStart().getLine() + ": unknown assignment type " + ctx.getText());
+    }
+
+    return null;
   }
 
   @Override
@@ -540,9 +585,11 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
         final FateValueList returns = new FateValueList();
 
         for(int i = 0; i < def.returns; i++) {
-          final FateVariable out = this.getExprVar();
-          returns.values.add(out);
-          this.fate.addOp(new FateOp(OpType.POP, out));
+          returns.values.add(this.getExprVar());
+        }
+
+        for(int i = def.returns - 1; i >= 0; i--) {
+          this.fate.addOp(new FateOp(OpType.POP, returns.values.get(i)));
         }
 
         return returns.values.isEmpty() ? null : returns.values.size() == 1 ? returns.values.getFirst() : returns;
@@ -861,6 +908,11 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
 
   @Override
   public FateValue visitConst_array_initializer(final FateParser.Const_array_initializerContext ctx) {
+    throw new RuntimeException("Shouldn't be called directly");
+  }
+
+  @Override
+  public FateValue visitAugmented_assignment_op(final FateParser.Augmented_assignment_opContext ctx) {
     throw new RuntimeException("Shouldn't be called directly");
   }
 

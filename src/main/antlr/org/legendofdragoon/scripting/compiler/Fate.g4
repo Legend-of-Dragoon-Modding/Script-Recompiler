@@ -15,7 +15,8 @@ control : if_ | while_ ;
 
 block : OPENER (statement | control)* CLOSER ;
 
-statement : (declaration | assignment | postfix | call | return_) TERM ;
+statement : (declaration | assignment | postfix | augmented_assignment | call | return_) TERM ;
+augmented_assignment : assignable augmented_assignment_op expression ;
 postfix : assignable postfix_op ;
 assignment : (assignable | assignable_list) ASSIGN (expression | array_initializer) ;
 declaration : VAR (IDENTIFIER | identifier_list) (ASSIGN (expression | array_initializer))? ;
@@ -56,6 +57,7 @@ array_initializer : LBRACKET expression (COMMA expression)* RBRACKET ;
 array_lookup : IDENTIFIER LBRACKET expression RBRACKET ;
 const_array_initializer : LBRACKET (NUMBER (COMMA NUMBER)* | STRING (COMMA STRING)*) COMMA? RBRACKET ;
 
+augmented_assignment_op : ANDC_ASSIGN | ORC_ASSIGN | MUL_ASSIGN | DIV_ASSIGN | MOD_ASSIGN | ADD_ASSIGN | SUB_ASSIGN | ANDA_ASSIGN | ORA_ASSIGN | XORA_ASSIGN | NOTA_ASSIGN | SHR_ASSIGN | SHL_ASSIGN;
 postfix_op : INCR | DECR ;
 mult_op : MUL | DIV | MOD ;
 add_op : ADD | SUB ;
@@ -100,6 +102,22 @@ NOTA : '~' ;
 
 SHR : '>>' ;
 SHL : '<<' ;
+
+ANDC_ASSIGN: '&&=' ;
+ORC_ASSIGN: '||=' ;
+
+MUL_ASSIGN : '*=' ;
+DIV_ASSIGN : '/=' ;
+MOD_ASSIGN : '%=' ;
+ADD_ASSIGN : '+=' ;
+SUB_ASSIGN : '-=' ;
+ANDA_ASSIGN : '&=' ;
+ORA_ASSIGN : '|=' ;
+XORA_ASSIGN : '^=' ;
+NOTA_ASSIGN : '~=' ;
+
+SHR_ASSIGN : '>>=' ;
+SHL_ASSIGN : '<<=' ;
 
 ASSIGN : '=' ;
 INCR : '++';

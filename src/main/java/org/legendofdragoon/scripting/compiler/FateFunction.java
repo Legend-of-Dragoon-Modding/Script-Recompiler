@@ -12,6 +12,7 @@ import java.util.Set;
 public class FateFunction extends FateOp {
   public final FateScope scope;
   public final String name;
+  private final List<FateVariable> params = new ArrayList<>();
   private final List<FateVariable> variables = new ArrayList<>();
   private final Map<FateParser.Return_Context, List<FateValue>> returns = new HashMap<>();
   private int returnCount;
@@ -23,7 +24,17 @@ public class FateFunction extends FateOp {
   }
 
   public FateVariable addParam(final String param) {
-    return this.addVariable(this.scope.addVariable(param));
+    final FateVariable var = this.addVariable(this.scope.addVariable(param));
+    this.params.add(var);
+    return var;
+  }
+
+  public FateVariable getParam(final int index) {
+    return this.params.get(index);
+  }
+
+  public int getParamCount() {
+    return this.params.size();
   }
 
   public FateVariable addVariable(final FateVariable var) {
