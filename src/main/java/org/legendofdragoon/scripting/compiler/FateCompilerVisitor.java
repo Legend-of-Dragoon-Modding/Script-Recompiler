@@ -162,7 +162,7 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
     this.fate.addOp(new FateLabel(label));
     this.visitBlock(ctx.block());
     final FateValue expr = this.visitExpression(ctx.expression());
-    this.fate.addOp(new FateOp(OpType.JMP_CMP, new FateImmediate("=="), new FateImmediate("0"), expr, new FateLabelRef(label)));
+    this.fate.addOp(new FateOp(OpType.JMP_CMP, new FateImmediate("!="), new FateImmediate("0"), expr, new FateLabelRef(label)));
     return null;
   }
 

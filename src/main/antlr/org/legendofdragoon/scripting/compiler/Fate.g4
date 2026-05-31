@@ -11,7 +11,7 @@ function : DEF IDENTIFIER identifier_list block ;
 
 if_ : IF LPAREN expression RPAREN block (ELSE if_ | ELSE block)? ;
 while_ : WHILE LPAREN expression RPAREN block ;
-do_while : DO block WHILE LPAREN expression RPAREN ;
+do_while : DO block WHILE LPAREN expression RPAREN TERM ;
 control : if_ | while_ | do_while ;
 
 block : OPENER (statement | control)* CLOSER ;
