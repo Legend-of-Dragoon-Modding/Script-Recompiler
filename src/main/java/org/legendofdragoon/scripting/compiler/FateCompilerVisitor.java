@@ -628,14 +628,8 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
     if(ctx.NOTC() != null) {
       final FateVariable out = this.getExprVar();
       final FateValue expr = this.visitExpression(ctx.expression(0));
-
-      // logical not bithack
-      this.fate.addOp(new FateOp(OpType.MOV, expr, out));
-      this.fate.addOp(new FateOp(OpType.NOT, out));
-      this.fate.addOp(new FateOp(OpType.INCR, out));
-      this.fate.addOp(new FateOp(OpType.OR, expr, out));
-      this.fate.addOp(new FateOp(OpType.SHR, out));
-      this.fate.addOp(new FateOp(OpType.INCR, out));
+      this.fate.addOp(new FateOp(OpType.CMP, new FateImmediate("=="), expr, new FateImmediate("0"), out));
+      return out;
     }
 
     if(ctx.NOTA() != null) {
