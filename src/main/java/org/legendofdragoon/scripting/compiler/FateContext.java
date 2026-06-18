@@ -15,6 +15,7 @@ public class FateContext {
   private int currentFunctionStart;
 
   private final Deque<FateScope> scopeStack = new LinkedList<>();
+  private final Deque<FateLoop> loopStack = new LinkedList<>();
 
   private final List<FateOp> ops = new ArrayList<>();
 
@@ -54,6 +55,18 @@ public class FateContext {
 
   public FateScope getCurrentScope() {
     return this.scopeStack.peek();
+  }
+
+  public void pushLoop(final String startLabel, final String endLabel) {
+    this.loopStack.push(new FateLoop(startLabel, endLabel));
+  }
+
+  public void popLoop() {
+    this.loopStack.pop();
+  }
+
+  public FateLoop getCurrentLoop() {
+    return this.loopStack.peek();
   }
 
   public FateVariable addVariable(final String name) {

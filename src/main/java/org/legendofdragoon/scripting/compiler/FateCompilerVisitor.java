@@ -146,23 +146,35 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
     final String label1 = this.getLabel();
     final String label2 = this.getLabel();
 
+    this.fate.pushLoop(label1, label2);
+
     this.fate.addOp(new FateLabel(label1));
     final FateValue expr = this.visitExpression(ctx.expression());
     this.fate.addOp(new FateOp(OpType.JMP_CMP, new FateImmediate("=="), new FateImmediate("0"), expr, new FateLabelRef(label2)));
     this.visitBlock(ctx.block());
     this.fate.addOp(new FateOp(OpType.JMP, new FateLabelRef(label1)));
     this.fate.addOp(new FateLabel(label2));
+
+    this.fate.popLoop();
+
     return null;
   }
 
   @Override
   public FateValue visitDo_while(final FateParser.Do_whileContext ctx) {
-    final String label = this.getLabel();
+    final String label1 = this.getLabel();
+    final String label2 = this.getLabel();
 
-    this.fate.addOp(new FateLabel(label));
+    this.fate.pushLoop(label1, label2);
+
+    this.fate.addOp(new FateLabel(label1));
     this.visitBlock(ctx.block());
     final FateValue expr = this.visitExpression(ctx.expression());
-    this.fate.addOp(new FateOp(OpType.JMP_CMP, new FateImmediate("!="), new FateImmediate("0"), expr, new FateLabelRef(label)));
+    this.fate.addOp(new FateOp(OpType.JMP_CMP, new FateImmediate("!="), new FateImmediate("0"), expr, new FateLabelRef(label2)));
+    this.fate.addOp(new FateLabel(label2));
+
+    this.fate.popLoop();
+
     return null;
   }
 
@@ -181,6 +193,30 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
 
   @Override
   public FateValue visitStatement(final FateParser.StatementContext ctx) {
+    if(ctx.CONTINUE() != null) {
+      final FateLoop loop = this.fate.getCurrentLoop();
+
+      if(loop == null) {
+        this.errors.add(ctx.getStart().getLine() + ": continue is only valid inside of loop");
+        return null;
+      }
+
+      this.fate.addOp(new FateOp(OpType.JMP, new FateLabelRef(loop.startLabel)));
+      return null;
+    }
+
+    if(ctx.BREAK() != null) {
+      final FateLoop loop = this.fate.getCurrentLoop();
+
+      if(loop == null) {
+        this.errors.add(ctx.getStart().getLine() + ": break is only valid inside of loop");
+        return null;
+      }
+
+      this.fate.addOp(new FateOp(OpType.JMP, new FateLabelRef(loop.endLabel)));
+      return null;
+    }
+
     return this.visitChildren(ctx);
   }
 

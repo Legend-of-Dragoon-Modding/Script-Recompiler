@@ -16,7 +16,7 @@ control : if_ | while_ | do_while ;
 
 block : OPENER (statement | control)* CLOSER ;
 
-statement : (declaration | assignment | postfix | augmented_assignment | call | return_) TERM ;
+statement : (declaration | assignment | postfix | augmented_assignment | call | return_ | CONTINUE | BREAK) TERM ;
 augmented_assignment : assignable augmented_assignment_op expression ;
 postfix : assignable postfix_op ;
 assignment : (assignable | assignable_list) ASSIGN (expression | array_initializer) ;
@@ -76,6 +76,8 @@ VAR : 'var' ;
 TRUE : 'true' ;
 FALSE : 'false' ;
 RETURN : 'return' ;
+CONTINUE : 'continue' ;
+BREAK : 'break' ;
 
 IF : 'if' ;
 ELSE : 'else' ;
