@@ -21,7 +21,7 @@ public class FatePreprocessor extends FateParserBaseVisitor<Void> {
   public Void visitFunction(final FateParser.FunctionContext ctx) {
     final String name = ctx.IDENTIFIER().getText();
 
-    if(ctx.block().statement().getLast().return_() == null) {
+    if(ctx.block().statement().isEmpty() || ctx.block().statement().getLast().return_() == null) {
       this.errors.add(ctx.getStart().getLine() + ": function \"" + name + "\" missing return");
     }
 
