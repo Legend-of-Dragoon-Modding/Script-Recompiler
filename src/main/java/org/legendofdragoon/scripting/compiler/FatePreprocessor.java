@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class FatePreprocessor extends FateBaseVisitor<Void> {
+public class FatePreprocessor extends FateParserBaseVisitor<Void> {
   private final List<String> errors;
   private final Map<String, FateFunctionDefinition> functions;
   private int returnCount;

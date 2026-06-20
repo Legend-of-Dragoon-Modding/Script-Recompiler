@@ -36,6 +36,10 @@ dependencies {
 generateGrammarSource {
 //  maxHeapSize = "128m"
   arguments += ['-package', 'org.legendofdragoon.scripting.compiler', '-visitor', '-no-listener']
+
+  // This is needed with the lexer and parser split into separate files so the .tokens file can be found by the parser
+  arguments += ['-Xexact-output-dir']
+  outputDirectory = layout.buildDirectory.dir("generated-src/antlr/main/org/legendofdragoon/scripting/compiler").get().asFile
 }
 
 compileJava.dependsOn generateGrammarSource

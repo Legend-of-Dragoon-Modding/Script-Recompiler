@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> implements FateVisitor<FateValue> {
+public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> implements FateParserVisitor<FateValue> {
   private final List<String> errors;
   private final Map<String, FateFunctionDefinition> functions;
 
@@ -104,6 +104,12 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
     }
 
     this.fate.endFunction();
+    return null;
+  }
+
+  @Override
+  public FateValue visitInclude(final FateParser.IncludeContext ctx) {
+    this.fate.addOp(new FateInclude(ctx.INCLUDE_FILE().getText()));
     return null;
   }
 
