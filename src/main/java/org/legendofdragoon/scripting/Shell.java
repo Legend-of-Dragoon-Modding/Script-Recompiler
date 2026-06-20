@@ -98,7 +98,7 @@ public final class Shell {
     options.addOption("o", "out", true, "The output file");
     options.addOption("w", "working-directory", true, "The directory in which to locate relative input/output files");
 
-    if("c".equals(args[0]) || "compile".equals(args[0])) {
+    if("a".equals(args[0]) || "assemble".equals(args[0])) {
       options.addOption("L", "libs", true, "Add a library directory against which #includes will be resolved");
     }
 
