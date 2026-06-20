@@ -17,6 +17,10 @@ public class FateCompiler {
   private final Meta meta;
 
   public String compile(final String source, final List<String> errors) {
+    return this.compile(source, "", errors);
+  }
+
+  public String compile(final String source, final String labelPrefix, final List<String> errors) {
     final FateLexer lexer = new FateLexer(CharStreams.fromString(source));
     final CommonTokenStream tokens = new CommonTokenStream(lexer);
     final FateParser parser = new FateParser(tokens);
@@ -32,6 +36,7 @@ public class FateCompiler {
     visitor.visit(tree);
 
     fate.updateVariableNames();
+    fate.updateLabelNames(labelPrefix);
     return fate.compile();
   }
 }

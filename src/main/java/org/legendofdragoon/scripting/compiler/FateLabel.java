@@ -3,7 +3,7 @@ package org.legendofdragoon.scripting.compiler;
 import org.legendofdragoon.scripting.OpType;
 
 public class FateLabel extends FateOp {
-  public final String label;
+  public String label;
 
   public FateLabel(final String label) {
     super(OpType.NOOP);

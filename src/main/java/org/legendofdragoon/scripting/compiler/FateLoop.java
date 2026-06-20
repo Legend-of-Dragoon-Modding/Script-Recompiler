@@ -1,10 +1,10 @@
 package org.legendofdragoon.scripting.compiler;
 
 public class FateLoop {
-  public final String startLabel;
-  public final String endLabel;
+  public final FateLabel startLabel;
+  public final FateLabel endLabel;
 
-  public FateLoop(final String startLabel, final String endLabel) {
+  public FateLoop(final FateLabel startLabel, final FateLabel endLabel) {
     this.startLabel = startLabel;
     this.endLabel = endLabel;
   }

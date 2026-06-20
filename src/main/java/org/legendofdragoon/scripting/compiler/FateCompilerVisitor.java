@@ -16,7 +16,6 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
 
   private final Meta meta;
   private final FateContext fate;
-  private int labelIndex;
   private int exprVarIndex;
 
   public FateCompilerVisitor(final Meta meta, final FateContext fate, final List<String> errors, final Map<String, FateFunctionDefinition> functions) {
@@ -35,12 +34,6 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
     }
 
     return this.fate.getVariable(var);
-  }
-
-  private String getLabel() {
-    final String var = "_label_" + this.labelIndex;
-    this.labelIndex++;
-    return var;
   }
 
   private FateVariable getExprVar() {
@@ -117,18 +110,18 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
   public FateValue visitIf_(final FateParser.If_Context ctx) {
     final FateValue expr = this.visitExpression(ctx.expression());
 
-    final String label = this.getLabel();
+    final FateLabel label = this.fate.getLabel();
     this.fate.addOp(new FateOp(OpType.JMP_CMP, new FateImmediate("=="), new FateImmediate("0"), expr, new FateLabelRef(label)));
     this.visitBlock(ctx.block().getFirst());
 
     // if there's an else, we need to jump over it at the end of the if block
-    String endLabel = null;
+    FateLabel endLabel = null;
     if(ctx.if_() != null || ctx.block(1) != null) {
-      endLabel = this.getLabel();
+      endLabel = this.fate.getLabel();
       this.fate.addOp(new FateOp(OpType.JMP, new FateLabelRef(endLabel)));
     }
 
-    this.fate.addOp(new FateLabel(label));
+    this.fate.addOp(label);
 
     // else if
     if(ctx.if_() != null) {
@@ -141,7 +134,7 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
     }
 
     if(endLabel != null) {
-      this.fate.addOp(new FateLabel(endLabel));
+      this.fate.addOp(endLabel);
     }
 
     return null;
@@ -149,17 +142,17 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
 
   @Override
   public FateValue visitWhile_(final FateParser.While_Context ctx) {
-    final String label1 = this.getLabel();
-    final String label2 = this.getLabel();
+    final FateLabel label1 = this.fate.getLabel();
+    final FateLabel label2 = this.fate.getLabel();
 
     this.fate.pushLoop(label1, label2);
 
-    this.fate.addOp(new FateLabel(label1));
+    this.fate.addOp(label1);
     final FateValue expr = this.visitExpression(ctx.expression());
     this.fate.addOp(new FateOp(OpType.JMP_CMP, new FateImmediate("=="), new FateImmediate("0"), expr, new FateLabelRef(label2)));
     this.visitBlock(ctx.block());
     this.fate.addOp(new FateOp(OpType.JMP, new FateLabelRef(label1)));
-    this.fate.addOp(new FateLabel(label2));
+    this.fate.addOp(label2);
 
     this.fate.popLoop();
 
@@ -168,16 +161,16 @@ public class FateCompilerVisitor extends AbstractParseTreeVisitor<FateValue> imp
 
   @Override
   public FateValue visitDo_while(final FateParser.Do_whileContext ctx) {
-    final String label1 = this.getLabel();
-    final String label2 = this.getLabel();
+    final FateLabel label1 = this.fate.getLabel();
+    final FateLabel label2 = this.fate.getLabel();
 
     this.fate.pushLoop(label1, label2);
 
-    this.fate.addOp(new FateLabel(label1));
+    this.fate.addOp(label1);
     this.visitBlock(ctx.block());
     final FateValue expr = this.visitExpression(ctx.expression());
     this.fate.addOp(new FateOp(OpType.JMP_CMP, new FateImmediate("!="), new FateImmediate("0"), expr, new FateLabelRef(label2)));
-    this.fate.addOp(new FateLabel(label2));
+    this.fate.addOp(label2);
 
     this.fate.popLoop();
 

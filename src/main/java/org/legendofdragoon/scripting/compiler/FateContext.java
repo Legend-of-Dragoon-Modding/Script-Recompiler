@@ -19,6 +19,9 @@ public class FateContext {
 
   private final List<FateOp> ops = new ArrayList<>();
 
+  private final List<FateLabel> generatedLabels = new ArrayList<>();
+  private int labelIndex;
+
   public void addEntrypoint(final String name) {
     this.entrypoints.add(name);
   }
@@ -57,7 +60,7 @@ public class FateContext {
     return this.scopeStack.peek();
   }
 
-  public void pushLoop(final String startLabel, final String endLabel) {
+  public void pushLoop(final FateLabel startLabel, final FateLabel endLabel) {
     this.loopStack.push(new FateLoop(startLabel, endLabel));
   }
 
@@ -67,6 +70,13 @@ public class FateContext {
 
   public FateLoop getCurrentLoop() {
     return this.loopStack.peek();
+  }
+
+  public FateLabel getLabel() {
+    final FateLabel var = new FateLabel("_label_" + this.labelIndex);
+    this.generatedLabels.add(var);
+    this.labelIndex++;
+    return var;
   }
 
   public FateVariable addVariable(final String name) {
@@ -94,6 +104,12 @@ public class FateContext {
   public void updateVariableNames() {
     for(final FateFunction function : this.functions.values()) {
       function.updateVariableNames();
+    }
+  }
+
+  public void updateLabelNames(final String prefix) {
+    for(final FateLabel label : this.generatedLabels) {
+      label.label = prefix + label.label;
     }
   }
 
