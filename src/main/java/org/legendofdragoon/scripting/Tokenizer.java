@@ -2,6 +2,7 @@ package org.legendofdragoon.scripting;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.legendofdragoon.scripting.compiler.FateCompiler;
 import org.legendofdragoon.scripting.meta.Meta;
 import org.legendofdragoon.scripting.resolution.ResolvedValue;
 import org.legendofdragoon.scripting.tokens.Data;
@@ -74,9 +75,11 @@ public class Tokenizer {
   public static final Pattern INLINE_INL_PATTERN = Pattern.compile('^' + INL_SUBPATTERN + "\\s*?\\[" + INL_SUBPATTERN + "]$", Pattern.CASE_INSENSITIVE);
 
   private final Meta meta;
+  private final FateCompiler compiler;
 
-  public Tokenizer(final Meta meta) {
+  public Tokenizer(final Meta meta, final FateCompiler compiler) {
     this.meta = meta;
+    this.compiler = compiler;
   }
 
   public Script tokenize(final String name, final List<Path> includePaths, final String source) {
@@ -114,8 +117,18 @@ public class Tokenizer {
         final Path includeFile = Include.resolve(includePaths, originalIncludeFile);
 
         final List<String> newLines = new ArrayList<>(lines.subList(0, lineIndex));
+
         try {
-          newLines.addAll(this.splitSource(Files.readString(includeFile)));
+          if(includeFile.toString().endsWith(".fate")) {
+            final List<String> errors = new ArrayList<>();
+            newLines.addAll(this.splitSource(this.compiler.compile(Files.readString(includeFile), errors)));
+
+            if(!errors.isEmpty()) {
+              throw new IncludeFailedException("Failed to compile " + includeFile + ":\n" + String.join("\n", errors));
+            }
+          } else {
+            newLines.addAll(this.splitSource(Files.readString(includeFile)));
+          }
         } catch(final IOException e) {
           throw new IncludeFailedException("Include for " + includeFile + " failed", e);
         }

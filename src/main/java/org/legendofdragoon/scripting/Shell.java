@@ -249,8 +249,9 @@ public final class Shell {
 
         final List<Path> includeDirs = readIncludeDirs(cmd.getOptionValues("libs"));
 
+        final FateCompiler compiler = new FateCompiler(meta);
         final Assembler assembler = new Assembler();
-        final Tokenizer tokenizer = new Tokenizer(meta);
+        final Tokenizer tokenizer = new Tokenizer(meta, compiler);
 
         final String input = Files.readString(inputFile);
         final Script tokenizedDecompiledSource = tokenizer.tokenize(inputFile.toString(), includeDirs, input);
