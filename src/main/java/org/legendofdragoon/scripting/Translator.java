@@ -191,7 +191,7 @@ public class Translator {
   }
 
   private String buildHeaderParam(final Op op) {
-    if(op.type == OpType.WAIT_CMP || op.type == OpType.WAIT_CMP_0 || op.type == OpType.JMP_CMP || op.type == OpType.JMP_CMP_0) {
+    if(op.type == OpType.WAIT_CMP || op.type == OpType.WAIT_CMP_0 || op.type == OpType.JMP_CMP || op.type == OpType.JMP_CMP_0 || op.type == OpType.CMP) {
       return switch(op.headerParam) {
         case 0 -> "<=";
         case 1 -> "<";
@@ -265,7 +265,47 @@ public class Translator {
       case REG_NULL -> "null";
       case REG_VAR -> "reg[stor[%d]]".formatted(param.rawValues[0] & 0xff);
 
-      case STOR_INL, GAMEVAR_INL, REG_INL, INLINE_INL -> throw new RuntimeException(param.type + " not yet implemented");
+      case STOR_INL -> {
+        final int count = param.rawValues[0] & 0xff;
+        final int storIndex = (param.rawValues[1] & 0xffff) * 4;
+
+        if(count == 2) {
+          final int scriptIndex = (param.rawValues[1] >>> 16) * 4;
+          yield "stor[inl[%#x], inl[%#x]]".formatted(scriptIndex, storIndex);
+        }
+
+        yield "stor[inl[%#x]]".formatted(storIndex);
+      }
+
+      case GAMEVAR_INL -> {
+        final int count = param.rawValues[0] & 0xff;
+        final int index1 = (param.rawValues[1] & 0xffff) * 4;
+
+        if(count == 2) {
+          final int index2 = (param.rawValues[1] >>> 16) * 4;
+          yield "var[inl[%#x]][inl[%#x]]".formatted(index1, index2);
+        }
+
+        yield "var[inl[%#x]]".formatted(index1);
+      }
+
+      case REG_INL -> {
+        final int count = param.rawValues[0] & 0xff;
+        final int regIndex = (param.rawValues[1] & 0xffff) * 4;
+
+        if(count == 2) {
+          final int scriptIndex = (param.rawValues[1] >>> 16) * 4;
+          yield "reg[inl[%#x], inl[%#x]]".formatted(scriptIndex, regIndex);
+        }
+
+        yield "reg[inl[%#x]]".formatted(regIndex);
+      }
+
+      case INLINE_INL -> {
+        final int offset1 = (param.rawValues[1] & 0xffff) * 4;
+        final int offset2 = (param.rawValues[1] >>> 16) * 4;
+        yield "inl[%#x][inl[%#x]]".formatted(offset1, offset2);
+      }
     };
   }
 
