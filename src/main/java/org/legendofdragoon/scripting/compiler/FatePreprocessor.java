@@ -4,17 +4,26 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 import org.legendofdragoon.scripting.OpType;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
 public class FatePreprocessor extends FateParserBaseVisitor<Void> {
   private final List<String> errors;
+  private final Collection<String> includes;
   private final Map<String, FateFunctionDefinition> functions;
   private int returnCount;
 
-  public FatePreprocessor(final List<String> errors, final Map<String, FateFunctionDefinition> functions) {
+  public FatePreprocessor(final List<String> errors, final Collection<String> includes, final Map<String, FateFunctionDefinition> functions) {
     this.errors = errors;
+    this.includes = includes;
     this.functions = functions;
+  }
+
+  @Override
+  public Void visitInclude(final FateParser.IncludeContext ctx) {
+    this.includes.add(ctx.INCLUDE_FILE().getText());
+    return super.visitInclude(ctx);
   }
 
   @Override

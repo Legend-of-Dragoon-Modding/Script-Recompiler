@@ -122,7 +122,7 @@ public class Tokenizer {
           if(includeFile.toString().endsWith(".fate")) {
             final List<String> errors = new ArrayList<>();
             final String labelPrefix = includeFile.getFileName().toString();
-            newLines.addAll(this.splitSource(this.compiler.compile(Files.readString(includeFile), labelPrefix.substring(0, labelPrefix.length() - 5), errors)));
+            newLines.addAll(this.splitSource(this.compiler.compile(includePaths, Files.readString(includeFile), labelPrefix.substring(0, labelPrefix.length() - 5), errors)));
 
             if(!errors.isEmpty()) {
               throw new IncludeFailedException("Failed to compile " + includeFile + ":\n" + String.join("\n", errors));

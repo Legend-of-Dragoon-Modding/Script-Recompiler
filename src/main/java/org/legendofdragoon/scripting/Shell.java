@@ -98,7 +98,7 @@ public final class Shell {
     options.addOption("o", "out", true, "The output file");
     options.addOption("w", "working-directory", true, "The directory in which to locate relative input/output files");
 
-    if("a".equals(args[0]) || "assemble".equals(args[0])) {
+    if("a".equals(args[0]) || "assemble".equals(args[0]) || "c".equals(args[0]) || "compile".equals(args[0])) {
       options.addOption("L", "libs", true, "Add a library directory against which #includes will be resolved");
     }
 
@@ -224,11 +224,13 @@ public final class Shell {
         final String source = Files.readString(inputFile);
         final List<String> errors = new ArrayList<>();
 
+        final List<Path> includeDirs = readIncludeDirs(cmd.getOptionValues("libs"));
+
         final FateCompiler compiler = new FateCompiler(meta);
         final String compiled;
 
         try {
-          compiled = compiler.compile(source, errors);
+          compiled = compiler.compile(includeDirs, source, errors);
           Files.createDirectories(outputFile.getParent());
           Files.writeString(outputFile, compiled, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
         } catch(final Throwable t) {
